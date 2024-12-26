@@ -1,63 +1,33 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import Messages from "../../../img/messages.png"; // Ensure the path is correct
+import Messages from "../../../img/messages.png";
 import { IoMailOutline } from "react-icons/io5";
 
 export function MessagesCard() {
   const [messages, setMessages] = useState([]);
-  const [filteredMessages, setFilteredMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("thisWeek");
 
-  // Fetch messages from the API
+  // Fetch recent employees from the API
   useEffect(() => {
-    const fetchMessages = async () => {
+    const fetchRecentEmployees = async () => {
       try {
-        const response = await axios.get("/api/organizations");
-        // Transform data to extract messages with a created_at date
-        const messages = response.data.map((org) => ({
-          id: org.id,
-          message: "Organization added successfully!",
-          companyName: org.company_name,
-          created_at: org.created_at, // Ensure the API provides this field
+        const response = await axios.get("/api/recent-employees");
+        // Transform data to display relevant messages
+        const transformedMessages = response.data.map((employee) => ({
+          id: employee.id,
+          message: `New Employee Created: ${employee.name}`,
+          created_at: employee.created_at,
         }));
-        setMessages(messages);
+        setMessages(transformedMessages);
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error("Error fetching recent employees:", error);
         setLoading(false);
       }
     };
 
-    fetchMessages();
+    fetchRecentEmployees();
   }, []);
-
-  // Filter messages based on selected filter
-  useEffect(() => {
-    const now = new Date();
-    const startOfWeek = new Date();
-    startOfWeek.setDate(now.getDate() - now.getDay());
-
-    const startOfLastWeek = new Date();
-    startOfLastWeek.setDate(now.getDate() - now.getDay() - 7);
-    const endOfLastWeek = new Date(startOfWeek);
-    endOfLastWeek.setDate(endOfLastWeek.getDate() - 1);
-
-    let filtered;
-    if (filter === "thisWeek") {
-      filtered = messages.filter((msg) => {
-        const messageDate = new Date(msg.created_at);
-        return messageDate >= startOfWeek && messageDate <= now;
-      });
-    } else if (filter === "lastWeek") {
-      filtered = messages.filter((msg) => {
-        const messageDate = new Date(msg.created_at);
-        return messageDate >= startOfLastWeek && messageDate <= endOfLastWeek;
-      });
-    }
-
-    setFilteredMessages(filtered);
-  }, [filter, messages]);
 
   // Format date as MM/DD/YYYY
   const formatDate = (dateString) => {
@@ -74,49 +44,16 @@ export function MessagesCard() {
 
   return (
     <div className="w-full p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Notifications</h2>
-        {/* Filter Dropdown */}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="custom-select"
-          style={{
-            backgroundColor: '#fff2d4',
-            color: 'black',
-            border: 'none',
-            padding: '20px 30px', // Adjusted padding to reduce spacing
-            borderRadius: '40px',
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            MozAppearance: 'none',
-            position: 'relative',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            backgroundImage: `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDEyIDEyIj48cGF0aCBkPSJNMyAzLjVoNi41bC01IDUtNS01eiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==')`, // Inline SVG arrow
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'calc(100% - 10px) center', // Adjusted position for less gap
-            backgroundSize: '8px', // Reduced size for the arrow
-          }}
-        >
-          <option value="thisWeek">This Week</option>
-          <option value="lastWeek">Last Week</option>
-        </select>
-
-
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Notifications</h2>
       <div className="flex flex-col gap-4">
-        {filteredMessages.length > 0 ? (
-          filteredMessages.map((msg) => (
+        {messages.length > 0 ? (
+          messages.map((msg) => (
             <div
               key={msg.id}
-              className="w-full border border-gray-300 rounded-xl p-4 shadow-md bg-white flex items-center justify-between"
-              style={{ padding: "30px" }}
+              className="w-full border border-gray-300 rounded-xl p-10 shadow-md bg-white flex items-center justify-between"
             >
-              {/* Left: Circle with Image and Text */}
+              {/* Left: Circle with Icon and Text */}
               <div className="flex items-center">
-                {/* Circle with Icon */}
                 <div
                   className="w-14 h-14 rounded-full mr-4"
                   style={{
@@ -130,9 +67,8 @@ export function MessagesCard() {
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold text-gray-700 mb-2">
-                    {msg.companyName}
+                    {msg.message}
                   </h4>
-                  <p className="text-gray-600">{msg.message}</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(msg.created_at)}
                   </p>
@@ -140,18 +76,15 @@ export function MessagesCard() {
               </div>
 
               {/* Right: Mail Icon */}
-              <IoMailOutline
-                className="text-3xl"
-                style={{ color: "#161616" }}
-              />
+              <IoMailOutline className="text-3xl" style={{ color: "#161616" }} />
             </div>
           ))
         ) : (
-          <p className="text-center text-gray-600">No messages found for the selected period.</p>
+          <p className="text-center text-gray-600">No new employees added in the past week.</p>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 export default MessagesCard;

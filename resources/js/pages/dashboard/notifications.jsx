@@ -4,7 +4,7 @@ import { FaPencilAlt, FaPlus } from "react-icons/fa";
 import Profile from "../../../img/profile.png";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { PiArrowCircleUpLight } from "react-icons/pi";
-
+import Loader from "./Loader";
 const ToggleSwitch = ({ isEnabled, onToggle }) => (
   <label
     className="relative inline-flex items-center cursor-pointer"
@@ -35,18 +35,22 @@ export function Notifications() {
   const [isTwoFactorAuthEnabled, setIsTwoFactorAuthEnabled] = useState(true);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [admin, setAdmin] = useState({});
+  const [loading, setLoading] = useState(true); // State for loader
 
   useEffect(() => {
     axios
-      .get("http://localhost:8000/api/admins/2")
+      .get("/api/admins/6")
       .then((response) => {
         setAdmin(response.data);
+        setLoading(false)
       })
       .catch((error) =>
         console.error("There was an error fetching the data:", error)
       );
   }, []);
-
+  if (loading) {
+    return <Loader />; // Display loader while loading is true
+  }
   return (
     <div className="w-full p-6 bg-white rounded-lg shadow-md text-gray-800 mt-10">
       {/* Update Notification Section */}
@@ -64,8 +68,8 @@ export function Notifications() {
           />
           {/* Profile Text */}
           <div>
-            <h2 className="text-lg font-semibold">{admin.name || "Admin"}</h2>
-            <p className="text-sm text-gray-500">Admin</p>
+            <h2 className="text-lg font-semibold">{admin.company_name || "Admin"}</h2>
+            <p className="text-sm text-gray-500">Organization</p>
           </div>
         </div>
 
@@ -88,13 +92,11 @@ export function Notifications() {
         <div className="space-y-6 animate-fadeInLeft">
           {/* Account Section */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">
-              Account
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">Account</h3>
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm">Name</span>
               <span className="flex items-center text-sm">
-                {admin.name || "Eden Markram"}
+                {admin.company_name|| "Eden Markram"}
                 <button className="ml-2 text-orange-500">
                   <PencilSquareIcon className="w-5 h-5" />
                 </button>
@@ -103,16 +105,14 @@ export function Notifications() {
             <div className="flex justify-between items-center">
               <span className="text-sm">Email</span>
               <span className="text-sm">
-                {admin.email || "example@mail.com"}
+                {admin.contact_email || "example@mail.com"}
               </span>
             </div>
           </div>
 
           {/* Language Section */}
           <div className="mt-8">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">
-              Language
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">Language</h3>
             <div className="flex justify-between items-center">
               <span className="text-sm">Current language of App</span>
               <span className="flex items-center text-sm">
@@ -126,9 +126,7 @@ export function Notifications() {
 
           {/* Privacy Section */}
           <div className="mt-8">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">
-              Privacy
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">Privacy</h3>
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm">Password protected</span>
               <button className="text-orange-500 text-sm">Change</button>
@@ -142,6 +140,16 @@ export function Notifications() {
                 }
               />
             </div>
+          </div>
+
+          {/* Remove Account */}
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">
+              Remove Account
+            </h3>
+            <button className="bg-orange-100 text-orange-500 px-3 py-1 rounded-full text-sm">
+              Remove
+            </button>
           </div>
         </div>
 
@@ -177,7 +185,40 @@ export function Notifications() {
               Notifications Setting
             </button>
           </div>
+
+          {/* Accessibility Section */}
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">
+              Accessibility
+            </h3>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">
+                Allow manager to approve or reject entries
+              </span>
+              <ToggleSwitch isEnabled={true} onToggle={() => {}} />
+            </div>
+          </div>
+
+          {/* Support and Feedback */}
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">
+              Support and Feedback
+            </h3>
+            <div className="text-orange-500 space-y-1 text-sm">
+              <p className="cursor-pointer">Contact</p>
+              <p className="cursor-pointer">Report</p>
+              <p className="cursor-pointer">Submit</p>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* App Version */}
+      <div className="mt-8">
+        <span className="text-gray-600 text-sm">App version</span>
+        <span className="ml-2 text-gray-800 text-sm font-semibold">
+          Version 2.0.13
+        </span>
       </div>
     </div>
   );

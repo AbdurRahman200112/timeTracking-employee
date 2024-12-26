@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
 import { useParams, useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export function EditEmployee() {
   const { id } = useParams(); // Get employee ID from route
@@ -15,218 +15,137 @@ export function EditEmployee() {
     location: "",
     joining_date: "",
     cnic: "",
-    designation: "",
+    Designation: "",
     department: "",
     employment_type: "",
-    profile: null,
-    employee_card: null,
   });
 
-  const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState({}); // Validation errors
+  const [loading, setLoading] = useState(true); // Loading state
 
   useEffect(() => {
-    console.log("Employee ID:", id); // Print the ID to the console
+    // Fetch existing employee data
     axios
       .get(`/api/employeeShow/${id}`)
       .then((response) => {
         setFormData(response.data);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error("Error fetching employee:", error);
+      .catch((err) => {
+        toast.error("Failed to load employee data.");
+        console.error(err);
         setLoading(false);
       });
   }, [id]);
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (files) {
-      setFormData({ ...formData, [name]: files[0] });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
-
-  const handlePhoneChange = (phone) => {
-    setFormData({ ...formData, contact: phone });
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.name) errors.name = "Name is required";
-    if (!formData.email) errors.email = "Email is required";
+    if (!formData.name) errors.name = "Name is required.";
+    if (!formData.email) errors.email = "Email is required.";
     return errors;
-};
+  };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate form data
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
+      toast.error(Object.values(validationErrors).join(" "));
+      return;
     }
 
     try {
-        const data = new FormData();
-        Object.keys(formData).forEach((key) => {
-            data.append(key, formData[key]);
-        });
-
-        await axios.put(`/api/employee/${id}`, data, {
-            headers: { "Content-Type": "multipart/form-data" },
-        });
-        alert("Employee updated successfully");
-        navigate("/dashboard/employeeDetails");
-    } catch (error) {
-        console.error("Error updating employee:", error.response?.data || error.message);
+      const response = await axios.put(`/api/updateEmployee/${id}`, formData); // API endpoint
+      toast.success(response.data.message);
+      navigate("/dashboard/employeeDetails");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Update failed. Please try again.");
     }
-};
-
+  };
 
   if (loading) {
     return <div className="text-center py-10">Loading...</div>;
   }
 
   return (
-    <div className="max-w-7xl mx-auto bg-white p-8 rounded-2xl shadow-lg border" style={{ marginTop: "100px", width: "100%" }}>
+    <div
+      className="max-w-7xl mx-auto bg-white p-8 rounded-2xl shadow-lg border"
+      style={{ marginTop: "100px", width: "100%" }}
+    >
+      {/* Toastify Container */}
+      <ToastContainer />
+
       <h1 className="text-2xl font-semibold mb-6">Edit Employee</h1>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Profile and Employee Card Upload */}
+          {/* Employee Card Section */}
           <div className="col-span-1">
-            <label htmlFor="profile" className="block text-sm font-semibold mb-2">
-              Upload Profile Picture
-            </label>
-            <div className="mb-8 border-dashed border-2 border-gray-300 rounded-lg p-6 flex items-center justify-center h-40">
-              <input type="file" id="profile" name="profile" onChange={handleChange} />
-            </div>
-            <label htmlFor="employee_card" className="block text-sm font-semibold mb-2">
-              Upload Employee Card
-            </label>
-            <div className="border-dashed border-2 border-gray-300 rounded-lg p-6 flex items-center justify-center h-40">
-              <input type="file" id="employee_card" name="employee_card" onChange={handleChange} />
+            <div className="mt-20 rounded-lg p-6 flex items-center justify-center h-40 w-full">
+              {formData.employee_card ? (
+                <div className="mb-4 w-full">
+                  <img
+                    src={
+                      typeof formData.employee_card === "string"
+                        ? formData.employee_card // URL from backend
+                        : URL.createObjectURL(formData.employee_card) // File preview
+                    }
+                    alt="Employee Card"
+                    className="w-full h-auto object-contain"
+                  />
+                  <p className="text-gray-500 mt-2 text-center">
+                    Current Employee Card
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center">
+                  No Employee Card uploaded
+                </p>
+              )}
+              <input
+                type="file"
+                id="employee_card"
+                name="employee_card"
+                onChange={handleChange}
+                className="hidden"
+              />
             </div>
           </div>
 
           {/* Form Fields */}
           <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
-            </div>
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-            </div>
-            <div>
-              <label htmlFor="contact" className="block text-sm font-semibold mb-2">
-                Phone No.
-              </label>
-              <PhoneInput
-                country={"us"}
-                value={formData.contact}
-                onChange={handlePhoneChange}
-                inputStyle={{
-                  width: "100%",
-                  border: "none",
-                  borderRadius: "999px",
-                  backgroundColor: "#f4f4f4",
-                  height: "55px",
-                  paddingLeft: "15px",
-                }}
-                buttonStyle={{
-                  borderRadius: "999px 0 0 999px",
-                  backgroundColor: "#f4f4f4",
-                }}
-              />
-              {errors.contact && <p className="text-red-500 text-sm">{errors.contact}</p>}
-            </div>
-            <div>
-              <label htmlFor="location" className="block text-sm font-semibold mb-2">
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                id="location"
-                value={formData.location}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="joining_date" className="block text-sm font-semibold mb-2">
-                Joining Date
-              </label>
-              <input
-                type="date"
-                name="joining_date"
-                id="joining_date"
-                value={formData.joining_date}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="cnic" className="block text-sm font-semibold mb-2">
-                CNIC
-              </label>
-              <input
-                type="text"
-                name="cnic"
-                id="cnic"
-                value={formData.cnic}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="designation" className="block text-sm font-semibold mb-2">
-                Designation
-              </label>
-              <input
-                type="text"
-                name="designation"
-                id="designation"
-                value={formData.designation}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-            </div>
-            <div>
-              <label htmlFor="department" className="block text-sm font-semibold mb-2">
-                Department
-              </label>
-              <input
-                type="text"
-                name="department"
-                id="department"
-                value={formData.department}
-                onChange={handleChange}
-                className="rounded-full px-6 py-4 w-full bg-gray-100"
-              />
-            </div>
+            {[
+              { label: "Name", name: "name", type: "text", placeholder: "Enter name" },
+              { label: "Email", name: "email", type: "email", placeholder: "Enter email" },
+              { label: "Contact", name: "contact", type: "text", placeholder: "Enter contact" },
+              { label: "Location", name: "location", type: "text", placeholder: "Enter location" },
+              { label: "Joining Date", name: "joining_date", type: "date" },
+              { label: "CNIC", name: "cnic", type: "text", placeholder: "Enter CNIC" },
+              { label: "Designation", name: "Designation", type: "text", placeholder: "Enter designation" },
+              { label: "Department", name: "department", type: "text", placeholder: "Enter department" },
+            ].map((field, idx) => (
+              <div key={idx}>
+                <label htmlFor={field.name} className="block text-sm font-semibold mb-2">
+                  {field.label}
+                </label>
+                <input
+                  type={field.type}
+                  name={field.name}
+                  id={field.name}
+                  value={formData[field.name] || ""}
+                  onChange={handleChange}
+                  placeholder={field.placeholder}
+                  className="rounded-full px-6 py-4 w-full bg-gray-100"
+                />
+              </div>
+            ))}
             <div>
               <label htmlFor="employment_type" className="block text-sm font-semibold mb-2">
                 Employment Type
@@ -234,7 +153,7 @@ const handleSubmit = async (e) => {
               <select
                 name="employment_type"
                 id="employment_type"
-                value={formData.employment_type}
+                value={formData.employment_type || ""}
                 onChange={handleChange}
                 className="rounded-full px-6 py-4 w-full bg-gray-100"
               >

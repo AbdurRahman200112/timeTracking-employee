@@ -8,8 +8,17 @@ class ApprovalController extends Controller
 {
     public function index(Request $request)
     {
+        // Fetch the active organization_id from the session
+        $organizationId = session('user_id'); // Replace 'user_id' with the correct session key
+    
+        if (!$organizationId) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+    
+        // Build the query to fetch time tracking data
         $query = DB::table('time_tracking')
             ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
+            ->where('time_tracking.organization_id', $organizationId) // Filter by organization_id
             ->select(
                 'employees.id as employee_id',
                 'employees.name as employee_name',
@@ -22,15 +31,18 @@ class ApprovalController extends Controller
                 'time_tracking.overtime',
                 'employees.status'
             );
-
+    
+        // Apply employment_type filter if provided
         if ($request->has('employment_type')) {
             $query->where('employees.employment_type', $request->employment_type);
         }
-
+    
+        // Execute the query and fetch results
         $timeTrackingData = $query->get();
-
-        return response()->json($timeTrackingData);
+    
+        return response()->json($timeTrackingData, 200);
     }
+    
     public function show($id)
     {
         $employee = DB::table('time_tracking')
@@ -94,17 +106,30 @@ class ApprovalController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|string',
-            'comment' => 'nullable|string', // Validate the comment field
+            'status' => 'required|string|in:Approve,Disapprove,Resubmit for Approval', // Allow specific statuses
         ]);
+    
+        try {
+            // Update only the status in the employees table
+            DB::table('employees')
+                ->where('id', $id)
+                ->update(['status' => $request->status]);
+    
+            return response()->json(['message' => 'Status updated successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to update status.'], 500);
+        }
+    }
 
-        DB::table('time_tracking')
-            ->where('employee_id', $id)
-            ->update([
-                'status' => $request->status,
-                'comments' => $request->comment, // Save the comment in the time_tracking table
-            ]);
-
-        return response()->json(['message' => 'Status updated successfully.']);
+    public function updateStatusToResubmit($id)
+    {
+        $updated = DB::table('employees')
+            ->where('id', $id)
+            ->update(['status' => 'Resubmit']);
+    
+        if ($updated) {
+            return response()->json(["message" => "Status updated to Resubmit for Approval"]);
+        }
+        return response()->json(["message" => "Entry not found or update failed"], 404);
     }
 }

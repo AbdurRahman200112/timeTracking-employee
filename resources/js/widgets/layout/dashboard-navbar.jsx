@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import Profile from "../../../img/profile.png";
 import Rectange from "../../../img/Rectangle.png";
@@ -17,6 +17,7 @@ import {
 import { MdPersonOutline, MdLockOutline, MdNotificationsNone } from "react-icons/md";
 import { Bars3Icon } from "@heroicons/react/24/solid";
 import { useMaterialTailwindController, setOpenSidenav } from "@/context";
+import axios from "axios";
 
 export function DashboardNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -24,15 +25,34 @@ export function DashboardNavbar() {
   const { pathname } = useLocation();
   const [layout, page] = pathname.split("/").filter((el) => el !== "");
   const navigate = useNavigate();
+  const [organization, setOrganization] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch organization data
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id"); // Retrieve user_id from localStorage
+
+    axios
+      .get(`/api/organization/data/${userId}`, { withCredentials: true }) // Pass user_id dynamically
+      .then((response) => {
+        setOrganization(response.data); // Save organization data
+        setLoading(false); // Stop loading
+      })
+      .catch((error) => {
+        console.error("Error fetching organization data:", error);
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div>
       <Navbar
         color={fixedNavbar ? "white" : "transparent"}
-        className={`rounded-xl transition-all ${fixedNavbar
-          ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
-          : "px-0 py-1"
-          }`}
+        className={`rounded-xl transition-all ${
+          fixedNavbar
+            ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
+            : "px-0 py-1"
+        }`}
         fullWidth
         blurred={fixedNavbar}
       >
@@ -83,7 +103,7 @@ export function DashboardNavbar() {
               <Menu>
                 <MenuHandler>
                   <img
-                    src={Profile}
+                    src={(organization && organization.profile) || Profile}
                     className="flex items-center justify-center w-12 h-12 rounded-full cursor-pointer bg-[#fff2d4]"
                     alt="Profile"
                   />
@@ -111,19 +131,18 @@ export function DashboardNavbar() {
 
                   {/* Menu Items */}
                   <div className="mt-16 px-4">
-                  <Link to="/tables">
-                  <MenuItem className="flex items-center gap-4 py-3 hover:bg-gray-100 rounded-lg">
-                      <MdPersonOutline className="h-6 w-6 text-blue-gray-800" />
-                      <Typography
-                        variant="small"
-                        className="text-blue-gray-800 font-medium"
-                        style={{ fontFamily: "Poppins" }}
-                      >
-                        Profile
-                      </Typography>
-                    </MenuItem>
+                    <Link to="/tables">
+                      <MenuItem className="flex items-center gap-4 py-3 hover:bg-gray-100 rounded-lg">
+                        <MdPersonOutline className="h-6 w-6 text-blue-gray-800" />
+                        <Typography
+                          variant="small"
+                          className="text-blue-gray-800 font-medium"
+                          style={{ fontFamily: "Poppins" }}
+                        >
+                          Profile
+                        </Typography>
+                      </MenuItem>
                     </Link>
-
 
                     <Link to="/auth/forgotPassword">
                       <MenuItem className="flex items-center gap-4 py-3 hover:bg-gray-100 rounded-lg">
@@ -150,7 +169,6 @@ export function DashboardNavbar() {
                         </Typography>
                       </MenuItem>
                     </Link>
-
                   </div>
                 </MenuList>
               </Menu>

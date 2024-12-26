@@ -2,14 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import ApprovalEdit from "./ApprovalEdit"; // Import the ApprovalEdit component
 import { FaEdit } from "react-icons/fa";
-
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Loader from "./Loader";
 export function Approval() {
   const [timeTrackingData, setTimeTrackingData] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState(null); // To track which dropdown is open
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null); // To track the selected employee for editing
   const [isModalOpen, setIsModalOpen] = useState(false); // Modal state for Disapproval
   const [comment, setComment] = useState(""); // Comment for Disapproval
-
+  const [loading, setLoading] = useState(true); // State for loader
   // Fetch data from the API when the component loads
   useEffect(() => {
     fetchTimeTrackingData();
@@ -20,9 +22,11 @@ export function Approval() {
       .get("/api/approval")
       .then((response) => {
         setTimeTrackingData(response.data);
+        setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
+        toast.error("Error fetching time tracking data.");
       });
   };
 
@@ -37,36 +41,58 @@ export function Approval() {
     setIsModalOpen(true); // Open the modal
   };
 
+  // Handle resubmission logic
+  const handleResubmit = (employeeId) => {
+    axios
+      .post(`/api/approval/resubmit/${employeeId}`)
+      .then((response) => {
+        toast.success(response.data.message || "Resubmitted for approval successfully.");
+        fetchTimeTrackingData(); // Refresh the data
+      })
+      .catch((error) => {
+        toast.error(error.response?.data?.message || "Error resubmitting for approval.");
+        console.error("Error resubmitting for approval:", error);
+      });
+  };
+
   // Submit the disapproval with a comment
   const handleSubmitDisapproval = () => {
     if (!selectedEmployeeId || !comment.trim()) {
-      alert("Please provide a comment for disapproval.");
+      toast.warn("Please provide a comment for disapproval.");
       return;
     }
-
+  
     axios
       .post(`/api/approval/disapprove/${selectedEmployeeId}`, {
         status: "Disapprove",
         comment: comment, // Include the comment for the backend
       })
       .then((response) => {
-        console.log(response.data.message);
+        toast.success(response.data.message || "Status updated successfully.");
         setIsModalOpen(false); // Close the modal
         setComment(""); // Reset the comment
+        setSelectedEmployeeId(null); // Reset the selected employee ID to prevent redirection
         fetchTimeTrackingData(); // Refresh the data
       })
       .catch((error) => {
+        toast.error("Error updating status.");
         console.error("Error updating status:", error);
       });
   };
+  
 
   // Render the ApprovalEdit component if an employee is being edited
   if (selectedEmployeeId && !isModalOpen) {
     return <ApprovalEdit employeeId={selectedEmployeeId} />;
   }
+  
+  if (loading) {
+    return <Loader />; // Display loader while the form submission is processing
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6 mt-8">
+      <ToastContainer position="top-right" autoClose={3000} />
       <h2 className="text-xl font-semibold mb-4">Approvals</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full rounded-lg">
@@ -124,7 +150,10 @@ export function Approval() {
                         <li
                           style={{ fontFamily: "Poppins" }}
                           className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => setActiveDropdown(null)}
+                          onClick={() => {
+                            handleResubmit(entry.employee_id); // Call handleResubmit
+                            setActiveDropdown(null);
+                          }}
                         >
                           Resubmit for Approval
                         </li>

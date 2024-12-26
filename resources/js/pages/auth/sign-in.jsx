@@ -36,15 +36,30 @@ export function SignIn() {
     e.preventDefault();
     setError("");
     setSuccess("");
-
+  
     try {
       const response = await axios.post("/api/login", {
         contact_email,
         password,
       });
+  
       if (response.status === 200) {
+        const { token, user_id } = response.data; // Ensure the backend sends a token and user_id
+  
+        // Calculate the token expiry time (1 minute = 60,000 ms)
+        const now = new Date().getTime();
+        const expiryTime = now + 60 * 100000; // 1 minute from current time
+  
+        // Store the token, expiry time, and user ID in localStorage
+        localStorage.setItem("token", token);
+        localStorage.setItem("token_expiry", expiryTime);
+        localStorage.setItem("user_id", user_id);
+  
+        // Set OTP state
         setIsCodeSent(true);
         setTimer(60);
+  
+        console.log("Token stored with 1-minute expiry.");
         console.log("Verification code sent to:", response.data.contact_email);
         setSuccess("Verification code sent. Please check your email.");
       }
@@ -53,6 +68,10 @@ export function SignIn() {
       setError("Invalid email or password.");
     }
   };
+  
+
+
+  
 
   // Handle OTP input change
   const handleOtpChange = (value, index) => {
@@ -212,7 +231,7 @@ export function SignIn() {
             )}
             {isCodeSent && (
               <div className="text-center text-sm mt-3">
-                <span>Resend code in: {formatTime()}</span>
+                {/* <span>Resend code in: {formatTime()}</span> */}
               </div>
             )}
             {!isCodeSent ? (

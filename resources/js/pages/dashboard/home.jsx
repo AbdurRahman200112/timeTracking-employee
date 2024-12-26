@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import L from 'leaflet';
 import MapPin from '../../../img/map-pin.png';
-
+import Loader from "./Loader";
 // Register chart.js components
 ChartJS.register(Title, Tooltip, Legend, ArcElement);
 
@@ -19,6 +19,8 @@ export function Home() {
   const [adHocCount, setAdHocCount] = useState(0);
   const [employeeLocations, setEmployeeLocations] = useState([]);
   const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(true); // State for loader
+
 
   const customIcon = new L.Icon({
     iconUrl: MapPin,
@@ -29,7 +31,7 @@ export function Home() {
 
   const containerStyle = {
     width: "100%",
-    height: "100%", // Makes sure the map takes the full height of the parent container
+    height: "100%", // Ensures the map takes the full height of the parent container
     margin: 0,
   };
 
@@ -39,9 +41,16 @@ export function Home() {
         const response = await axios.get("/api/employee-counts");
         const data = response.data;
 
-        setFullTimeCount(data.find(item => item.employment_type === "Full-Time")?.count || 0);
-        setPartTimeCount(data.find(item => item.employment_type === "Part-Time")?.count || 0);
-        setAdHocCount(data.find(item => item.employment_type === "Adhoc")?.count || 0);
+        setFullTimeCount(
+          data.find((item) => item.employment_type === "Full-Time")?.count || 0
+        );
+        setPartTimeCount(
+          data.find((item) => item.employment_type === "Part-Time")?.count || 0
+        );
+        setAdHocCount(
+          data.find((item) => item.employment_type === "Adhoc")?.count || 0
+        );
+        setLoading(false)
       } catch (error) {
         console.error("Error fetching employee data", error);
       }
@@ -49,16 +58,16 @@ export function Home() {
     fetchEmployeeCount();
   }, []);
 
-  const fetchEmployeeLocations = async () => {
-    try {
-      const response = await axios.get("/api/employees/locations"); // Replace with your actual API URL
-      setEmployeeLocations(response.data);
-    } catch (error) {
-      console.error("Error fetching employee locations:", error);
-    }
-  };
-
   useEffect(() => {
+    const fetchEmployeeLocations = async () => {
+      try {
+        const response = await axios.get("/api/employees/locations");
+        setEmployeeLocations(response.data);
+      } catch (error) {
+        console.error("Error fetching employee locations:", error);
+      }
+    };
+
     fetchEmployeeLocations();
   }, []);
 
@@ -73,34 +82,22 @@ export function Home() {
       },
     ],
   };
-  const FitBounds = ({ locations }) => {
-    const map = useMap(); // Access the map instance
 
-    useEffect(() => {
-      if (locations.length > 0) {
-        const bounds = locations.map((location) => [location.latitude, location.longitude]);
-        map.fitBounds(bounds); // Fit the map to the bounds of the markers
-      }
-    }, [locations, map]);
-
-    return null;
-  };
-  
   // Line Chart Data for Real Time Metrics
   const lineData = {
-    labels: ["January", "February", "March", "April", "May", "June", "July"],
+    labels: ["July", "August", "Sept", "Oct", "Nov", "Dec"],
     datasets: [
       {
         label: "Employees Over Time",
         data: [
           fullTimeCount,
+          fullTimeCount + partTimeCount,
+          fullTimeCount + partTimeCount + adHocCount,
+          fullTimeCount,
           partTimeCount,
-          adHocCount,
-          fullTimeCount + 5,
-          partTimeCount + 2,
-          adHocCount + 3,
-          fullTimeCount + 4,
-        ],
+          adHocCount,,
+          fullTimeCount + partTimeCount + adHocCount,
+        ], // Dynamically use employee count
         borderColor: "#FFBB00",
         tension: 0.3,
         fill: false,
@@ -108,24 +105,24 @@ export function Home() {
     ],
   };
 
-
-
-
   const totalActiveUsers = fullTimeCount + partTimeCount + adHocCount;
-  const activeUsers = 20;
+  const activeUsers = fullTimeCount + partTimeCount + adHocCount;
   const inactiveUsers = totalActiveUsers - activeUsers;
 
-  // Doughnut chart data for Active Users
+  // Doughnut Chart Data for Active Users
   const activeUserData = {
     labels: ["Active Users", "Inactive Users"],
     datasets: [
       {
         data: [activeUsers, inactiveUsers],
-        backgroundColor: ["#FF7A00", "#F3F3F3"], // Only partially filled, other part is white
+        backgroundColor: ["#FF7A00", "#F3F3F3"],
         borderWidth: 0,
       },
     ],
   };
+  if (loading) {
+    return <Loader />; // Display loader while loading is true
+  }
   return (
     <div className="p-8 space-y-8">
       {/* Main Grid for Charts */}
@@ -161,7 +158,7 @@ export function Home() {
               className="mt-5"
             />
             {/* Display Total Employees Count in Center */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold" style={{ fontFamily: 'Poppins' }}>
               {fullTimeCount + partTimeCount + adHocCount}
             </div>
           </div>
@@ -267,7 +264,7 @@ export function Home() {
                 ))}
               </MarkerClusterGroup>
               {/* Fit the map bounds to all the markers */}
-              <FitBounds locations={employeeLocations} />
+              {/* <FitBounds locations={employeeLocations} /> */}
             </MapContainer>
           </div>
         </div>

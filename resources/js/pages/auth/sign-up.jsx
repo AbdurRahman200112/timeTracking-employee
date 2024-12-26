@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Input, Checkbox, Button, Typography } from "@material-tailwind/react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export function SignUp() {
   const [formData, setFormData] = useState({
@@ -20,14 +22,12 @@ export function SignUp() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match!");
+      toast.error("Passwords do not match!");
       return;
     }
-
-    setError(""); // Clear previous errors
-
+  
     try {
       const response = await fetch("/api/signup-organization", {
         method: "POST",
@@ -36,16 +36,16 @@ export function SignUp() {
         },
         body: JSON.stringify({
           organizationName: formData.organizationName,
-          contact_email: formData.contactEmail, // Pass the email field
+          contact_email: formData.contactEmail,
           phoneNumber: formData.phoneNumber,
           companyAddress: formData.companyAddress,
           password: formData.password,
         }),
       });
-
+  
       if (response.ok) {
         const data = await response.json();
-        alert(data.message); // Show success message
+        toast.success(data.message); // Show success message
         setFormData({
           organizationName: "",
           contactEmail: "",
@@ -54,33 +54,46 @@ export function SignUp() {
           password: "",
           confirmPassword: "",
         });
-      } else {
+      } else if (response.status === 500) {
+        // Email already exists
         const errorData = await response.json();
-        setError(errorData.message || "Signup failed. Try again.");
+        toast.error("Email already exists.");
+      } else {
+        // Other errors
+        const errorData = await response.json();
+        toast.error(errorData.message || "Signup failed. Try again.");
       }
     } catch (err) {
       console.error("Error during signup:", err);
-      setError("An unexpected error occurred. Please try again later.");
+      toast.error("An unexpected error occurred. Please try again later.");
     }
   };
+  
 
   return (
     <section className="m-8 flex">
-<div 
-  className="h-screen hidden lg:block roundex-2xl" 
-  style={{ backgroundColor: '#FC8C10', width: '50%' }}
->
-  {/* Content here if needed */}
-</div>
+      <div
+        className="h-screen hidden lg:block rounded-2xl"
+        style={{ backgroundColor: "#FC8C10", width: "50%" }}
+      ></div>
 
       <div className="w-full lg:w-3/5 flex flex-col items-center justify-center">
         <div className="text-center">
-          <Typography variant="h2" className="font-bold mb-4">Create an Account</Typography>
-          <Typography variant="paragraph" color="blue-gray" className="text-lg font-normal">
+          <Typography variant="h2" className="font-bold mb-4">
+            Create an Account
+          </Typography>
+          <Typography
+            variant="paragraph"
+            color="blue-gray"
+            className="text-lg font-normal"
+          >
             Please create your profile.
           </Typography>
         </div>
-        <form onSubmit={handleSubmit} className="mt-8 mb-2 mx-auto w-80 max-w-screen-lg lg:w-1/2">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 mb-2 mx-auto w-80 max-w-screen-lg lg:w-1/2"
+        >
           <div className="mb-4">
             <Input
               name="organizationName"
@@ -150,7 +163,6 @@ export function SignUp() {
               required
             />
           </div>
-          {error && <Typography color="red" className="mb-4">{error}</Typography>}
           <Checkbox
             label={
               <Typography
@@ -169,11 +181,17 @@ export function SignUp() {
             }
             containerProps={{ className: "-ml-2.5" }}
           />
-          <Button className="mt-6 rounded-full py-5 px-7" fullWidth type="submit" style={{backgroundColor: '#FC8C10', fontFamily: 'Poppins'}}>
+          <Button
+            className="mt-6 rounded-full py-5 px-7"
+            fullWidth
+            type="submit"
+            style={{ backgroundColor: "#FC8C10", fontFamily: "Poppins" }}
+          >
             Create Account
           </Button>
         </form>
       </div>
+      <ToastContainer />
     </section>
   );
 }
