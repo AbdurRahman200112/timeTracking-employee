@@ -22,3 +22,5 @@ export * from "@/pages/dashboard/CreateEmployeesRules";
 export * from "@/pages/dashboard/EmployeeRulesList";
 export * from "@/pages/dashboard/CreateRules";
 export * from "@/pages/dashboard/OrganizationRules";
+export * from "@/pages/dashboard/EditRule";
+export * from "@/pages/dashboard/EditEmployeeRules";

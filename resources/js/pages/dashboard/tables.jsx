@@ -7,7 +7,7 @@ import Loader from "./Loader";
 export function Tables() {
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const navigate = useNavigate();
 
   // Fetch organization data
@@ -37,11 +37,11 @@ export function Tables() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white">
       {loading ? (
-        <div className="text-center mt-20 text-lg font-semibold">Loading...</div>
+        <div style={{ fontFamily: 'Poppins' }} className="text-center mt-20 text-lg font-semibold">Loading...</div>
       ) : !organization ? (
-        <div className="text-center mt-20 text-lg font-semibold">Organization not found.</div>
+        <div style={{ fontFamily: 'Poppins' }} className="text-center mt-20 text-lg font-semibold">Organization not found.</div>
       ) : (
         <div className="profile-container w-full p-4 md:p-10 flex flex-col md:flex-row items-start justify-start space-y-6 md:space-y-0 md:space-x-8">
           <div className="rounded-lg mb-4 pb-8 shadow-md bg-white w-full md:w-1/4">
@@ -56,11 +56,11 @@ export function Tables() {
                   src={organization.profile || Profile}
                   alt="Profile Icon"
                   className="h-14 w-14 rounded-full"
-                />             
-                
-                 </div>
-              <p className="text-center font-semibold text-base md:text-lg mt-2">
-                {organization.company_name || "Employee Name"}
+                />
+
+              </div>
+              <p style={{ fontFamily: 'Poppins' }} className="text-center font-semibold text-base md:text-lg mt-2">
+                {organization.name || "Employee Name"}
               </p>
             </div>
           </div>
@@ -68,26 +68,28 @@ export function Tables() {
           <div className="profile-details bg-white rounded-lg p-6 md:p-10 shadow-md w-full md:w-3/4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block font-semibold text-gray-600">Name</label>
-                <p className="mt-1">{organization.company_name}</p>
+                <label style={{ fontFamily: 'Poppins' }} className="block font-semibold text-gray-600">Name</label>
+                <p style={{ fontFamily: 'Poppins' }} className="mt-1">{organization.name}</p>
               </div>
               <div>
-                <label className="block font-semibold text-gray-600">Email</label>
-                <p className="mt-1">{organization.contact_email}</p>
+                <label style={{ fontFamily: 'Poppins' }} className="block font-semibold text-gray-600">Email</label>
+                <p style={{ fontFamily: 'Poppins' }}
+                  className="mt-1">{organization.email}</p>
               </div>
               <div>
-                <label className="block font-semibold text-gray-600">Phone Number</label>
-                <p className="mt-1">{organization.contact_phone}</p>
+                <label style={{ fontFamily: 'Poppins' }} className="block font-semibold text-gray-600">Phone Number</label>
+                <p style={{ fontFamily: 'Poppins' }} className="mt-1">{organization.contact}</p>
               </div>
               <div>
-                <label className="block font-semibold text-gray-600">Address</label>
-                <p className="mt-1">{organization.company_address}</p>
+                <label style={{ fontFamily: 'Poppins' }} className="block font-semibold text-gray-600">Designation</label>
+                <p style={{ fontFamily: 'Poppins' }} className="mt-1">{organization.designation || 'Developer'}</p>
               </div>
             </div>
 
             <div className="text-right mt-4">
               <button
-                className="text-white px-4 py-2 rounded-full bg-yellow-500 hover:bg-yellow-600 transition"
+                className="text-white px-7 py-5 rounded-full bg-orange-500 hover:bg-orange-600 transition"
+                style={{ fontFamily: 'Poppins' }}
                 onClick={handleEdit}
               >
                 Edit Organization

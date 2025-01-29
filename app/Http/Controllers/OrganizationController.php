@@ -18,41 +18,40 @@ class OrganizationController extends Controller
     public function register(Request $request)
     {
         try {
-            Log::info('Organization registration process started.', [
-                'organizationName' => $request->organizationName,
-                'contactEmail' => $request->contact_email,
-                'phoneNumber' => $request->phoneNumber,
+            Log::info('Employee registration process started.', [
+                'name' => $request->name,
+                'email' => $request->email,
+                'contact' => $request->contact,
             ]);
-
+    
             $validator = Validator::make($request->all(), [
-                'organizationName' => 'required|string',
-                'contact_email' => 'required|email',
-                'phoneNumber' => 'required|string',
-                'companyAddress' => 'required|string',
+                'name' => 'required|string',
+                'email' => 'required|email',
+                'contact' => 'required|string',
                 'password' => 'required|string|min:8',
             ]);
-
+    
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 400);
             }
-
-            DB::table('signed_up_organizations')->insert([
-                'company_name' => $request->organizationName,
-                'contact_email' => $request->contact_email,
-                'contact_phone' => $request->phoneNumber,
-                'company_address' => $request->companyAddress,
+    
+            DB::table('employees')->insert([
+                'name' => $request->name,
+                'email' => $request->email,
                 'password' => Hash::make($request->password),
+                'organization_id' => 6 ,
                 'verification_code' => random_int(100000, 999999),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
+    
             return response()->json(['message' => 'Organization registered successfully!'], 201);
         } catch (\Exception $e) {
             Log::error('Error registering organization.', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Error registering organization.'], 500);
         }
     }
+    
 
     /**
      * Handle user login.
@@ -60,16 +59,16 @@ class OrganizationController extends Controller
     public function login(Request $request)
     {
         try {
-            Log::info('Login attempt started.', ['contactEmail' => $request->contact_email]);
+            Log::info('Login attempt started.', ['email' => $request->email]);
 
             // Validate input
-            if (empty($request->contact_email) || empty($request->password)) {
+            if (empty($request->email) || empty($request->password)) {
                 return response()->json(['message' => 'Email and password are required.'], 400);
             }
 
             // Fetch user data from the database
-            $user = DB::table('signed_up_organizations')
-                ->where('contact_email', $request->contact_email)
+            $user = DB::table('employees')
+                ->where('email', $request->email)
                 ->first();
 
             // Check if user exists and password matches
@@ -81,8 +80,8 @@ class OrganizationController extends Controller
             $verificationCode = random_int(100000, 999999);
 
             // Update the verification code in the database
-            DB::table('signed_up_organizations')
-                ->where('contact_email', $request->contact_email)
+            DB::table('employees')
+                ->where('email', $request->email)
                 ->update(['verification_code' => $verificationCode]);
 
             // Store the user's ID in the session
@@ -90,7 +89,7 @@ class OrganizationController extends Controller
 
             // Send verification code to the user's email
             Mail::raw("Your verification code is: $verificationCode", function ($message) use ($request) {
-                $message->to($request->contact_email)
+                $message->to($request->email)
                     ->subject('Your Verification Code');
             });
 
@@ -112,7 +111,7 @@ class OrganizationController extends Controller
     public function verifyCode(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'contact_email' => 'required|email',
+            'email' => 'required|email',
             'code' => 'required|numeric',
         ]);
 
@@ -120,13 +119,13 @@ class OrganizationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = DB::table('signed_up_organizations')
-            ->where('contact_email', $request->contact_email)
+        $user = DB::table('employees')
+            ->where('email', $request->email)
             ->first();
 
         if ($user && $user->verification_code == $request->code) {
-            DB::table('signed_up_organizations')
-                ->where('contact_email', $request->contact_email)
+            DB::table('employees')
+                ->where('email', $request->email)
                 ->update(['verification_code' => null]);
 
             return response()->json(['message' => 'Code verified successfully.'], 200);
@@ -151,7 +150,7 @@ class OrganizationController extends Controller
         }
 
         // Fetch the organization based on the user ID
-        $organization = DB::table('signed_up_organizations')
+        $organization = DB::table('employees')
             ->where('id', $userId)
             ->first();
 
@@ -167,11 +166,13 @@ class OrganizationController extends Controller
         // Return the organization data as JSON
         return response()->json($organization, 200);
     }
+
+    
     public function show($id)
     {
         // Fetch specific fields from the organization, including profile
-        $organization = DB::table('signed_up_organizations')
-            ->select('company_name', 'contact_email', 'contact_phone', 'monthly_plan', 'company_address', 'profile')
+        $organization = DB::table('employees')
+            ->select('name', 'email', 'contact', 'designation')
             ->where('id', $id)
             ->first();
     

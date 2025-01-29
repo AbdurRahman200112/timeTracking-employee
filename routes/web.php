@@ -14,13 +14,21 @@ use App\Http\Controllers\AppController;
 |
 */
 
-Route::get('/', function () {
-    return view('app');
-});
+// Route::get('/', function () {
+//     return view('app');
+// });
 
-Route::get('/dashboard/home', function () {
-    return view('app');
-});
+// Route::get('/dashboard/home', function () {
+//     return view('app');
+// });
+
+// Route::get('/dashboard/AddEmployee', function () {
+//     return view('add.emoloyee');
+// });
+
+Route::get('/{any}', function () {
+    return view('app'); // Ensure 'app.blade.php' is configured to load your React app
+})->where('any', '.*');
 
 Route::get('/auth/reset-password', function () {
     return view('auth.reset-password');

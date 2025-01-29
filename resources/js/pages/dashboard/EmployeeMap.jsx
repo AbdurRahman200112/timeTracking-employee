@@ -68,6 +68,7 @@ export function EmployeeMap() {
         zoom={5}
         scrollWheelZoom={true}
         minZoom={3} // Allow zooming out further
+        attributionControl={false} // Disable attribution control
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -90,6 +91,7 @@ export function EmployeeMap() {
           ))}
         </MarkerClusterGroup>
       </MapContainer>
+
     </div>
   );
 }

@@ -17,22 +17,31 @@ class EmployeeDetails extends Controller
                 return response()->json(['message' => 'Unauthorized access.'], 403);
             }
     
-            $employees = DB::table('employees')->select(
-                'id',
-                'name',
-                'designation',
-                'contact',
-                'email',
-                'joining_date',
-                'status',
-                'location',
-                'department',
-                'employment_type',
-                'cnic',
-                'profile',
-                'employee_card',
-                'break_type'
-            )->where('organization_id', $organizationId)->get();
+            $defaultProfilePicture = url('/uploads/profile_pictures/');
+    
+            // Fetch employees and join with overtime_rules
+            $employees = DB::table('employees')
+                ->select(
+                    'employees.id',
+                    'employees.name',
+                    'employees.designation',
+                    'employees.contact',
+                    'employees.email',
+                    'employees.joining_date',
+                    'employees.location',
+                    'employees.department',
+                    'employees.employment_type',
+                    'employees.cnic',
+                    DB::raw("IFNULL(CONCAT('" . url('/') . "/', employees.profile), '$defaultProfilePicture') as profile"),
+                    DB::raw("IFNULL(CONCAT('" . url('/') . "/', employees.employee_card), null) as employee_card"),
+                    DB::raw("IFNULL(CONCAT('" . url('/') . "/', employees.additional_file), null) as additional_file"),
+                    'employees.break_type',
+                    'overtime_rules.monthly_rate',
+                    'overtime_rules.daily_rate'
+                )
+                ->leftJoin('overtime_rules', 'employees.id', '=', 'overtime_rules.employee_id')
+                ->where('organization_id', $organizationId)
+                ->get();
     
             return response()->json($employees, 200);
         } catch (\Exception $e) {
@@ -40,35 +49,8 @@ class EmployeeDetails extends Controller
         }
     }
     
-
-    // public function show($id)
-    // {
-    //     // Fetch a single employee by ID
-    //     $employee = DB::table('employees')->select(
-    //         'id',
-    //         'name',
-    //         'designation',
-    //         'contact',
-    //         'email',
-    //         'joining_date',
-    //         'status',
-    //         'location',
-    //         'department',
-    //         'employment_type',
-    //         'cnic',
-    //         'profile',
-    //         'employee_card'
-    //     )->where('id', $id)->first();
-
-    //     if ($employee) {
-    //         return response()->json($employee);
-    //     } else {
-    //         return response()->json(['message' => 'Employee not found'], 404);
-    //     }
-    // }
     public function show($id)
 {
-    // Fetch specific fields for the employee, including employee_card
     $employee = DB::table('employees')
         ->select(
             'name',
@@ -77,7 +59,7 @@ class EmployeeDetails extends Controller
             'location',
             'joining_date',
             'cnic',
-            'designation',
+            'Designation', // Uppercase 'Designation'
             'department',
             'employment_type',
             'profile',
@@ -90,20 +72,19 @@ class EmployeeDetails extends Controller
         return response()->json(['message' => 'Employee not found'], 404);
     }
 
-    // Add full URL for profile and employee_card images
-    if ($employee->profile) {
-        $employee->profile = asset('storage/' . $employee->profile);
-    }
+    // Generate URLs for images
+    $employee->profile = $employee->profile
+        ? asset($employee->profile)
+        : url('/uploads/profile_pictures/default.png');
 
-    if ($employee->employee_card) {
-        $employee->employee_card = asset('storage/' . $employee->employee_card);
-    }
+        if ($employee->employee_card) {
+            $employee->employee_card = asset('storage/' . $employee->employee_card);
+        }
 
     return response()->json($employee, 200);
 }
 
-
-    public function update(Request $request, $id)
+public function update(Request $request, $id)
 {
     // Fetch the existing data for the employee
     $employee = DB::table('employees')->where('id', $id)->first();
@@ -133,17 +114,55 @@ class EmployeeDetails extends Controller
 
     return response()->json(['message' => 'Employee updated successfully!']);
 }
+
+
+    public function downloadFile($employeeId)
+    {
+        try {
+            $employee = DB::table('employees')
+                ->select('additional_file')
+                ->where('id', $employeeId)
+                ->first();
     
+            if (!$employee || !$employee->additional_file) {
+                return response()->json(['message' => 'File not found.'], 404);
+            }
+    
+            $filePath = public_path($employee->additional_file);
+    
+            if (!file_exists($filePath)) {
+                return response()->json(['message' => 'File does not exist on the server.'], 404);
+            }
+    
+            return response()->download($filePath, basename($filePath), [
+                'Content-Type' => mime_content_type($filePath),
+                'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error downloading file', 'error' => $e->getMessage()], 500);
+        }
+    }
+    
+
+
     public function destroy($id)
     {
-        // Delete employee by ID
-        $employee = DB::table('employees')->where('id', $id)->first();
+        try {
+            $employee = DB::table('employees')->where('id', $id)->first();
 
-        if ($employee) {
+            if (!$employee) {
+                return response()->json(['message' => 'Employee not found'], 404);
+            }
+            DB::beginTransaction();
+            DB::table('time_tracking')->where('employee_id', $id)->delete();
+            DB::table('overtime_rules')->where('employee_id', $id)->delete();
             DB::table('employees')->where('id', $id)->delete();
-            return response()->json(['message' => 'Employee deleted successfully', 'employee' => $employee]);
-        } else {
-            return response()->json(['message' => 'Employee not found'], 404);
+            DB::commit();
+
+            return response()->json(['message' => 'Employee and related data deleted successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error deleting employee', 'error' => $e->getMessage()], 500);
         }
     }
 }

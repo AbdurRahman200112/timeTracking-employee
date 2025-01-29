@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Profile, Tables, Notifications, MessagesCard, TimeTracking, FullTimeEmployees, PartTimeEmployees, Approval, EmployeeMap, EmployeeDetails, EditProfile , Adhoc, ApprovalEdit, LiveMetrics, AddEmployee, EditEmployee,  BreakTypes, CreateEmployeesRules, EmployeeRulesList, CreateRules, OrganizationRules } from "@/pages/dashboard";
+import { Home, Profile, Tables, Notifications, MessagesCard, TimeTracking, FullTimeEmployees, PartTimeEmployees, Approval, EmployeeMap, EmployeeDetails, EditProfile, Adhoc, ApprovalEdit, LiveMetrics, AddEmployee, EditEmployee, BreakTypes, CreateEmployeesRules, EmployeeRulesList, CreateRules, OrganizationRules, EditRules, EditEmployeeRules } from "@/pages/dashboard";
 import { SignIn, SignUp, ForgotPassword, ResetPassword } from "@/pages/auth";
 import { CiGrid42 } from "react-icons/ci";
 import { UserGroupIcon } from "@heroicons/react/24/solid";
@@ -8,8 +8,11 @@ import { IoMdSettings } from "react-icons/io";
 import { CiLogout } from "react-icons/ci";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
-import { HiChartBarSquare } from "react-icons/hi2";
+import { FaTasks } from "react-icons/fa";
 import { PiMapPinLineFill } from "react-icons/pi";
+import EditRule from "./pages/dashboard/EditRule";
+import { CheckBadgeIcon } from "@heroicons/react/24/solid";
+import { TbHours24 } from "react-icons/tb";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -36,103 +39,86 @@ const routes = [
         element: <Home />,
       },
       {
-        icon: <UserGroupIcon {...icon} />,
-        name: "Employees",
-        path: "/profile", // Assign a path for the parent route
-        element: <Profile />,
-
-        children: [
-          {
-            name: "Full Time",
-            path: "/FullTimeEmployees",
-            element: <FullTimeEmployees />,
-          },
-          {
-            name: "Part Time",
-            path: "/PartTimeEmployees",
-            element: <PartTimeEmployees />,
-          },
-          {
-            name: "Adhoc",
-            path: "/adhoc",
-            element: <Adhoc />,
-          },
-        ],
+        icon: <TbHours24 {...icon} />,
+        name: "Time Tracking",
+        path: "/TimeTracking",
+        element: <TimeTracking />,
       },
       {
-        icon: <HiChartBarSquare {...icon} />,
-        name: "Live Metrics",
-        path: "/live-metrics",
+        icon: <CheckBadgeIcon {...icon} />,
+        name: "Approval",
+        path: "/approval",
+        element: <Approval />,
+      },
+      {
+        icon: <FaTasks {...icon} />,
+        name: "Tasks",
+        path: "/tasks",
         element: <LiveMetrics />,
       },
-      {
-        icon: <PiMapPinLineFill {...icon} />,
-        name: "Gps tracking",
-        path: "/employeeMap",
-        element: <EmployeeMap />,
-      },
-      {
-        icon: <UserGroupIcon {...icon} />,
-        name: "Management",
-        path: null, // No direct path for the parent
+      // {
+      //   icon: <PiMapPinLineFill {...icon} />,
+      //   name: "Gps tracking",
+      //   path: "/employeeMap",
+      //   element: <EmployeeMap />,
+      // },
+      // {
+      //   icon: <UserGroupIcon {...icon} />,
+      //   name: "Management",
+      //   path: null, // No direct path for the parent
 
-        children: [
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Time Tracking",
-            path: "/TimeTracking",
-            element: <TimeTracking />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Approval",
-            path: "/approval",
-            element: <Approval />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Employee Details",
-            path: "/employeeDetails",
-            element: <EmployeeDetails />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Add Employee",
-            path: "/AddEmployee",
-            element: <AddEmployee />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Break Types",
-            path: "/BreakTypes",
-            element: <BreakTypes />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Create Employee Rules",
-            path: "/create-employee-rules",
-            element: <CreateEmployeesRules />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Employee Rules",
-            path: "/EmployeeRulesList",
-            element: <EmployeeRulesList />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Create Organization Rules",
-            path: "/create-organization-rules",
-            element: <CreateRules />,
-          },
-          {
-            icon: <IoMdSettings {...icon} />,
-            name: "Organization Rules",
-            path: "/organization-rules",
-            element: <OrganizationRules />,
-          },
-        ],
-      },
+      //   children: [
+
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Approval",
+      //       path: "/approval",
+      //       element: <Approval />,
+      //     },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Employee Details",
+      //       path: "/employeeDetails",
+      //       element: <EmployeeDetails />,
+      //     },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Add Employee",
+      //       path: "/AddEmployee",
+      //       element: <AddEmployee />,
+      //     },
+      //     // {
+      //     //   icon: <IoMdSettings {...icon} />,
+      //     //   name: "Break Types",
+      //     //   path: "/BreakTypes",
+      //     //   element: <BreakTypes />,
+      //     // },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Create Employee Rules",
+      //       path: "/create-employee-rules",
+      //       element: <CreateEmployeesRules />,
+      //     },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Employee Rules",
+      //       path: "/EmployeeRulesList",
+      //       element: <EmployeeRulesList />,
+      //     },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Create Organization Rules",
+      //       path: "/create-organization-rules",
+      //       element: <CreateRules />,
+      //     },
+      //     {
+      //       icon: <IoMdSettings {...icon} />,
+      //       name: "Organization Rules",
+      //       path: "/organization-rules",
+      //       element: <OrganizationRules />,
+      //     },
+      //   ],
+      // },
       {
         icon: <FaRegUserCircle {...icon} />,
         name: "Profile",
@@ -150,6 +136,12 @@ const routes = [
         name: "Message Card",
         path: "/messagesCard",
         element: <MessagesCard />,
+      },
+      {
+        icon: <IoMdSettings {...icon} />,
+        name: "Edit Rule",
+        path: "/edit/:id",
+        element: <EditRules />,
       },
       {
         icon: <IoMdSettings {...icon} />,
@@ -224,11 +216,11 @@ const routes = [
         element: <AddEmployee />,
       },
 
-        {
+      {
         icon: <IoMdSettings {...icon} />,
         name: "Edot Employee",
-        path:"/edit-employee/:id",
-        
+        path: "/edit-employee/:id",
+
         element: <EditEmployee />,
       },
       {
@@ -249,6 +241,18 @@ const routes = [
         path: "/organization-rules",
         element: <OrganizationRules />,
       },
+      {
+        icon: <IoMdSettings {...icon} />,
+        name: "Organization Rules",
+        path: "/edit-employee-rules/:id",
+        element: <EditEmployeeRules />,
+      },
+      {
+        icon: <CiLogout {...icon} />,
+        name: "Logout",
+        path: "/sign-in",
+        element: <SignIn />,
+      },
       // <Route path="/dashboard/employeeDetails/edit/:id" element={<EditEmployee />} />
     ],
   },
@@ -266,7 +270,7 @@ const routes = [
         icon: <CiLogout {...icon} />,
         name: "Sign Up",
         path: "/sign-up",
-        element: <SignUp/>,
+        element: <SignUp />,
       },
       {
         icon: <IoMdSettings {...icon} />,
@@ -280,7 +284,7 @@ const routes = [
         path: "/resetPassword",
         element: <ResetPassword />,
       },
-      
+
     ],
   },
 ];

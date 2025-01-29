@@ -1,273 +1,122 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Doughnut } from "react-chartjs-2";
-import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement } from "chart.js";
-import { Line } from "react-chartjs-2";
-import "chart.js/auto";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import MarkerClusterGroup from 'react-leaflet-markercluster';
-import L from 'leaflet';
-import MapPin from '../../../img/map-pin.png';
-import Loader from "./Loader";
-// Register chart.js components
-ChartJS.register(Title, Tooltip, Legend, ArcElement);
+import React, { useState } from "react";
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { Button } from "@material-tailwind/react";
+import { FaClock } from "react-icons/fa";
+
+ChartJS.register(
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export function Home() {
-  const [employeeData, setEmployeeData] = useState([]);
-  const [fullTimeCount, setFullTimeCount] = useState(0);
-  const [partTimeCount, setPartTimeCount] = useState(0);
-  const [adHocCount, setAdHocCount] = useState(0);
-  const [employeeLocations, setEmployeeLocations] = useState([]);
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(true); // State for loader
+  const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
-
-  const customIcon = new L.Icon({
-    iconUrl: MapPin,
-    iconSize: [40, 70],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40],
-  });
-
-  const containerStyle = {
-    width: "100%",
-    height: "100%", // Ensures the map takes the full height of the parent container
-    margin: 0,
-  };
-
-  useEffect(() => {
-    const fetchEmployeeCount = async () => {
-      try {
-        const response = await axios.get("/api/employee-counts");
-        const data = response.data;
-
-        setFullTimeCount(
-          data.find((item) => item.employment_type === "Full-Time")?.count || 0
-        );
-        setPartTimeCount(
-          data.find((item) => item.employment_type === "Part-Time")?.count || 0
-        );
-        setAdHocCount(
-          data.find((item) => item.employment_type === "Adhoc")?.count || 0
-        );
-        setLoading(false)
-      } catch (error) {
-        console.error("Error fetching employee data", error);
-      }
-    };
-    fetchEmployeeCount();
-  }, []);
-
-  useEffect(() => {
-    const fetchEmployeeLocations = async () => {
-      try {
-        const response = await axios.get("/api/employees/locations");
-        setEmployeeLocations(response.data);
-      } catch (error) {
-        console.error("Error fetching employee locations:", error);
-      }
-    };
-
-    fetchEmployeeLocations();
-  }, []);
-
-  // Doughnut Chart Data for Employee Distribution
-  const pieData = {
-    labels: ["Full Time", "Part Time", "AdHoc"],
+  const workHoursData = {
+    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     datasets: [
       {
-        data: [fullTimeCount, partTimeCount, adHocCount],
-        backgroundColor: ["#FFBB00", "#FF7A00", "#6B3E26"],
-        borderWidth: 0,
+        label: "Work Hours",
+        data: [3, 5, 2, 7, 4, 6, 3],
+        backgroundColor: "#FC8C10",
+        borderRadius: 6,
       },
     ],
   };
 
-  // Line Chart Data for Real Time Metrics
-  const lineData = {
-    labels: ["July", "August", "Sept", "Oct", "Nov", "Dec"],
-    datasets: [
-      {
-        label: "Employees Over Time",
-        data: [
-          fullTimeCount,
-          fullTimeCount + partTimeCount,
-          fullTimeCount + partTimeCount + adHocCount,
-          fullTimeCount,
-          partTimeCount,
-          adHocCount,,
-          fullTimeCount + partTimeCount + adHocCount,
-        ], // Dynamically use employee count
-        borderColor: "#FFBB00",
-        tension: 0.3,
-        fill: false,
-      },
-    ],
-  };
-
-  const totalActiveUsers = fullTimeCount + partTimeCount + adHocCount;
-  const activeUsers = fullTimeCount + partTimeCount + adHocCount;
-  const inactiveUsers = totalActiveUsers - activeUsers;
-
-  // Doughnut Chart Data for Active Users
-  const activeUserData = {
-    labels: ["Active Users", "Inactive Users"],
-    datasets: [
-      {
-        data: [activeUsers, inactiveUsers],
-        backgroundColor: ["#FF7A00", "#F3F3F3"],
-        borderWidth: 0,
-      },
-    ],
-  };
-  if (loading) {
-    return <Loader />; // Display loader while loading is true
-  }
   return (
-    <div className="p-8 space-y-8">
-      {/* Main Grid for Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Real Time Metrics */}
-        <div className="bg-white p-6 rounded-2xl shadow-md flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-800" style={{ fontFamily: 'Poppins' }}>Real Time Metrics</h2>
-            <Line className="mt-3" data={lineData} options={{ responsive: true }} />
-          </div>
-        </div>
+    <div className="p-6 bg-white min-h-screen">
+      <h1 className="text-lg font-bold mb-4">Dashboard</h1>
+      <div className="p-4  flex flex-col">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col bg-white p-6 shadow-lg rounded-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold flex items-center" style={{ fontFamily: 'Poppins' }}>
+                <div className="bg-orange-50 p-3 flex justify-center items-center rounded-full">
+                  <FaClock className="text-orange-500" />
+                </div>
 
-        {/* Total Employees */}
-        <div className="bg-white p-6 rounded-2xl shadow-md flex items-center justify-center relative">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-800" style={{ fontFamily: 'Poppins' }}>Total Employees</h2>
-            <Doughnut
-              data={pieData}
-              options={{
-                responsive: true,
-                cutout: "70%",
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      usePointStyle: true,
-                    },
-                  },
-                },
-              }}
-              height={240}
-              width={240}
-              className="mt-5"
-            />
-            {/* Display Total Employees Count in Center */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold" style={{ fontFamily: 'Poppins' }}>
-              {fullTimeCount + partTimeCount + adHocCount}
+                 Work Hours
+              </h2>
+              <select className="bg-orange-50 rounded-full px-8 py-3">
+                <option>Oct</option>
+              </select>
+            </div>
+            <div className="h-60 md:h-80 flex justify-center items-center">
+              <Bar
+                data={workHoursData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  barPercentage: 0.4,  // Adjusts the width of each bar
+                  categoryPercentage: 0.6 // Adjusts spacing between bars
+                }}
+              />
             </div>
           </div>
-        </div>
-
-        {/* Active Users */}
-        <div className="bg-white p-6 rounded-2xl shadow-md flex items-center justify-center relative">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-800" style={{ fontFamily: 'Poppins' }}>Active Users</h2>
-            <Doughnut
-              data={activeUserData}
-              options={{
-                responsive: true,
-                cutout: "70%", // Only part of the doughnut is filled
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      usePointStyle: true,
-                    },
-                  },
-                },
-              }}
-              height={240}
-              width={240}
-              className="mt-5"
-            />
-            {/* Display Active Users Count in Center */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold" style={{ fontFamily: 'Poppins' }}>
-              {activeUsers}
+          <div className="flex flex-col bg-white p-6 shadow-lg rounded-xl">
+            <h2 className="font-semibold mb-4">Location</h2>
+            <div className="h-60 md:h-80">
+              <MapContainer center={[32.7767, -96.797]} zoom={5} className="h-full w-full rounded-lg">
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <Marker position={[32.7767, -96.797]}>
+                  <Popup>Employee Location</Popup>
+                </Marker>
+              </MapContainer>
             </div>
           </div>
         </div>
       </div>
 
-
-      <h2 className="text-xl font-semibold text-gray-800" style={{ fontFamily: 'Poppins' }}>Add Employee</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-20">
-        {/* Add Employee */}        
-        <div className="bg-white p-6 rounded-2xl shadow-xl py-6" style={{ height: '300px' }}>
-          <div className="flex justify-center items-center space-x-6 mt-4 h-full">
-            {/* File Upload Section */}
-            <div className="border-2 border-dashed border-gray-300 p-4 flex items-center justify-center w-1/2">
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp"
-                className="hidden"
-                id="fileInput"
-                onChange={(e) => setFile(e.target.files[0])}
-              />
-              <label
-                htmlFor="fileInput"
-                className="cursor-pointer text-gray-500 flex flex-col items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-sm">Upload Employee Card</span>
-              </label>
-              {file && <div className="mt-2 text-sm text-gray-500">Selected: {file.name}</div>}
-            </div>
-
-            {/* Add New Employee Button */}
-            <div className="w-1/2">
-              <button className="w-full px-6 py-3 text-white rounded-full shadow-md hover:bg-orange-600" style={{ backgroundColor: '#fc8c11', fontFamily: 'Poppins' }}>
-                Add New Employee
-              </button>
-              <div className="text-sm text-gray-500 mt-2" style={{ fontFamily: 'Poppins' }}>
-                Supported formats: JPG, JPEG, WEBP, PNG
-              </div>
-            </div>
-          </div>
+      <div className="flex bg-white  flex-col md:flex-row justify-between items-center mt-6">
+        <Button className="bg-orange-500 ml-5 px-14 py-4 text-white text-lg" style={{ borderRadius: '28px' }}>Start</Button>
+        <div className="text-3xl font-bold border-dashed border-2 px-8 py-4 md:mt-0">{`${time.hours} : ${time.minutes} : ${time.seconds}`}</div>
+        <div className="text-center bg-orange-500 text-white px-6 py-6 rounded-lg text-lg mt-4 md:mt-0">
+          <h3 className="text-2xl font-bold" style={{ fontFamily: 'Poppins' }}>04</h3>
+          <p className="text-lg" style={{ fontFamily: 'Poppins' }}>September</p>
         </div>
-
-
-        {/* GPS Tracking */}
-        <div className="bg-white p-6 rounded-lg shadow-md" style={{ height: "300px" }}>
-          <h2 className="text-xl font-semibold text-gray-800">GPS Tracking</h2>
-          <div className="w-full h-full">
-            <MapContainer
-              style={{ height: "100%", width: "100%" }} // Make map fill the parent div height
-              center={[37.0902, -95.7129]} // Initial center of the map (default view)
-              zoom={5}
-              scrollWheelZoom={true}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <MarkerClusterGroup>
-                {employeeLocations.map((employee) => (
-                  <Marker
-                    key={employee.id}
-                    position={[employee.latitude, employee.longitude]}
-                    icon={customIcon}
-                  >
-                    <Popup>
-                      <strong style={{ fontFamily: "Poppins" }}>{employee.name}</strong>
-                      <br />
-                      {employee.location}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MarkerClusterGroup>
-              {/* Fit the map bounds to all the markers */}
-              {/* <FitBounds locations={employeeLocations} /> */}
-            </MapContainer>
-          </div>
-        </div>
+      </div>
+      <div className="bg-white p-6 shadow-lg  overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2" style={{ fontFamily: 'Poppins' }}>Date</th>
+              <th style={{ fontFamily: 'Poppins' }}>Start</th>
+              <th style={{ fontFamily: 'Poppins' }}>End</th>
+              <th style={{ fontFamily: 'Poppins' }}>Break</th>
+              <th className="text-right" style={{ fontFamily: 'Poppins' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...Array(4)].map((_, index) => (
+              <tr key={index} className="border-b text-black">
+                <td className="py-2" style={{ fontFamily: 'Poppins' }}>04/09/2024</td>
+                <td style={{ fontFamily: 'Poppins' }}>8:30</td>
+                <td style={{ fontFamily: 'Poppins' }}>19:30</td>
+                <td style={{ fontFamily: 'Poppins' }}>00:30</td>
+                <td className="text-right">
+                  <Button style={{ fontFamily: 'Poppins' }} className="bg-orange-900 text-white px-4 py-2 rounded-lg">
+                    11 Hours
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

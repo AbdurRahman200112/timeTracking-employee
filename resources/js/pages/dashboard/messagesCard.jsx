@@ -39,12 +39,14 @@ export function MessagesCard() {
   };
 
   if (loading) {
-    return <p className="text-center text-gray-600">Loading messages...</p>;
+    return <p style={{ fontFamily: 'Poppins' }} className="text-center text-gray-600">Loading messages...</p>;
   }
 
   return (
-    <div className="w-full p-4">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Notifications</h2>
+    <div className="min-h-screen bg-white px-4 py-8" style={{ width: "100%", padding: 0, margin: 0 }}>
+    <div className="w-100 mx-auto bg-white px-6 lg:px-12 py-10">     {/* Update Notification Section */}
+
+      <h2 style={{ fontFamily: 'Poppins' }} className="text-2xl font-bold text-gray-800 mb-6">Notifications</h2>
       <div className="flex flex-col gap-4">
         {messages.length > 0 ? (
           messages.map((msg) => (
@@ -66,10 +68,10 @@ export function MessagesCard() {
                   <img src={Messages} alt="Message Icon" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">
+                  <h4 style={{ fontFamily: 'Poppins' }} className="text-lg font-semibold text-gray-700 mb-2">
                     {msg.message}
                   </h4>
-                  <p className="text-sm text-gray-500">
+                  <p style={{ fontFamily: 'Poppins' }} className="text-sm text-gray-500">
                     {formatDate(msg.created_at)}
                   </p>
                 </div>
@@ -80,9 +82,10 @@ export function MessagesCard() {
             </div>
           ))
         ) : (
-          <p className="text-center text-gray-600">No new employees added in the past week.</p>
+          <p style={{ fontFamily: 'Poppins' }} className="text-center text-gray-600">No new employees added in the past week.</p>
         )}
       </div>
+    </div>
     </div>
   );
 }

@@ -7,39 +7,51 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response; // For CSV export
 use Dompdf\Dompdf; // For PDF export
 use Dompdf\Options;
+
 class TimeTrackingController extends Controller
 {
     public function index()
     {
-        // Fetch the active organization_id from the session
-        $organizationId = session('user_id'); // Replace 'user_id' with the actual session key if different
-
+        // Retrieve the organization_id from the session
+        $organizationId = session('user_id'); // Ensure 'user_id' is correctly set in session
+        
         if (!$organizationId) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
-
-        // Fetch time tracking data only for employees belonging to the logged-in organization
+    
+        // Fetch time tracking data along with employee and overtime rules
         $timeTrackingData = DB::table('time_tracking')
             ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
-            ->where('time_tracking.organization_id', $organizationId) // Filter by organization_id
+            ->leftJoin('overtime_rules', 'employees.id', '=', 'overtime_rules.employee_id')
+            ->where('employees.id', $organizationId) // Fetch only data for this session's user ID
             ->select(
                 'employees.id as employee_id',
                 'employees.name as employee_name',
                 'employees.email',
                 'employees.employment_type',
                 'employees.designation',
+                'employees.break_duration',
                 'time_tracking.entry_date',
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
-                'time_tracking.overtime',
+                'time_tracking.location',
+                'overtime_rules.monthly_overtime_start',
+                'overtime_rules.monthly_rate',
+                'overtime_rules.weekly_overtime_start',
+                'overtime_rules.weekly_rate',
+                'overtime_rules.daily_start_time',
+                'overtime_rules.daily_rate',
+                'overtime_rules.early_start_time',
+                'overtime_rules.early_start_rate',
+                'overtime_rules.saturday_rate',
+                'overtime_rules.saturday_is_working_day'
             )
             ->get();
-
+    
         return response()->json($timeTrackingData, 200);
     }
-
-
+    
     public function countByEmploymentType()
     {
         // Fetch the active organization_id from the session
@@ -58,7 +70,6 @@ class TimeTrackingController extends Controller
 
         return response()->json($counts, 200);
     }
-
     public function FullTime()
     {
         // Fetch the active organization_id from the session
@@ -70,26 +81,73 @@ class TimeTrackingController extends Controller
 
         // Fetch Full-Time time tracking data for the active organization
         $timeTrackingData = DB::table('time_tracking')
-            ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
+            ->join('employees', 'time_tracking.employee_id', '=', 'employees.id') // Join with employees table
+            ->join('overtime_rules', 'time_tracking.employee_id', '=', 'overtime_rules.employee_id') // Join with overtime_rules table
             ->where('employees.organization_id', $organizationId) // Filter by organization_id
             ->where('employees.employment_type', 'Full-Time') // Filter for Full-Time employees
             ->select(
+                // Employee fields
                 'employees.id as employee_id',
                 'employees.name as employee_name',
                 'employees.email',
                 'employees.employment_type',
+
+                // Time tracking fields
                 'time_tracking.entry_date',
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
                 'time_tracking.overtime',
                 'time_tracking.break_duration',
-                'time_tracking.ot1_3_rate'
+
+                // Overtime rules fields
+                'overtime_rules.monthly_overtime_start',
+                'overtime_rules.monthly_rate',
+                'overtime_rules.weekly_overtime_start',
+                'overtime_rules.weekly_rate',
+                'overtime_rules.daily_start_time',
+                'overtime_rules.daily_rate',
+                'overtime_rules.early_start_time',
+                'overtime_rules.early_start_rate',
+                'overtime_rules.saturday_rate',
+                'overtime_rules.saturday_is_working_day'
             )
             ->get();
 
         return response()->json($timeTrackingData, 200);
     }
+
+    // public function FullTime()
+    // {
+    //     // Fetch the active organization_id from the session
+    //     $organizationId = session('user_id'); // Replace 'user_id' with the correct session key
+
+    //     if (!$organizationId) {
+    //         return response()->json(['message' => 'Unauthorized access.'], 403);
+    //     }
+
+    //     // Fetch Full-Time time tracking data for the active organization
+    //     $timeTrackingData = DB::table('time_tracking')
+    //         ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
+    //         ->where('employees.organization_id', $organizationId) // Filter by organization_id
+    //         ->where('employees.employment_type', 'Full-Time') // Filter for Full-Time employees
+    //         ->select(
+    //             'employees.id as employee_id',
+    //             'employees.name as employee_name',
+    //             'employees.email',
+    //             'employees.employment_type',
+    //             'time_tracking.entry_date',
+    //             'time_tracking.start_time',
+    //             'time_tracking.end_time',
+    //             'time_tracking.working_hours',
+    //             'time_tracking.overtime',
+    //             'time_tracking.break_duration',
+    //             // 'time_tracking.ot1_3_rate'
+    //         )
+    //         ->get();
+
+    //     return response()->json($timeTrackingData, 200);
+    // }
 
     public function PartTime()
     {
@@ -102,21 +160,36 @@ class TimeTrackingController extends Controller
 
         // Fetch Part-Time time tracking data for the active organization
         $timeTrackingData = DB::table('time_tracking')
-            ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
+            ->join('employees', 'time_tracking.employee_id', '=', 'employees.id') // Join with employees table
+            ->join('overtime_rules', 'time_tracking.employee_id', '=', 'overtime_rules.employee_id') // Join with overtime_rules table
             ->where('employees.organization_id', $organizationId) // Filter by organization_id
-            ->where('employees.employment_type', 'Part-Time') // Filter for Part-Time employees
+            ->where('employees.employment_type', 'Part-Time') // Filter for Full-Time employees
             ->select(
+                // Employee fields
                 'employees.id as employee_id',
                 'employees.name as employee_name',
                 'employees.email',
                 'employees.employment_type',
+
+                // Time tracking fields
                 'time_tracking.entry_date',
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
                 'time_tracking.overtime',
                 'time_tracking.break_duration',
-                'time_tracking.ot1_3_rate'
+
+                // Overtime rules fields
+                'overtime_rules.monthly_overtime_start',
+                'overtime_rules.monthly_rate',
+                'overtime_rules.weekly_overtime_start',
+                'overtime_rules.weekly_rate',
+                'overtime_rules.daily_start_time',
+                'overtime_rules.daily_rate',
+                'overtime_rules.early_start_time',
+                'overtime_rules.early_start_rate',
+                'overtime_rules.saturday_rate',
+                'overtime_rules.saturday_is_working_day'
             )
             ->get();
 
@@ -134,25 +207,40 @@ class TimeTrackingController extends Controller
 
         // Fetch Adhoc time tracking data for the active organization
         $timeTrackingData = DB::table('time_tracking')
-            ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
-            ->where('employees.organization_id', $organizationId) // Filter by organization_id
-            ->where('employees.employment_type', 'Adhoc') // Filter for Adhoc employees
-            ->select(
-                'employees.id as employee_id',
-                'employees.name as employee_name',
-                'employees.email',
-                'employees.employment_type',
-                'time_tracking.entry_date',
-                'time_tracking.start_time',
-                'time_tracking.end_time',
-                'time_tracking.working_hours',
-                'time_tracking.overtime',
-                'time_tracking.break_duration',
-                'time_tracking.ot1_3_rate'
-            )
-            ->get();
+        ->join('employees', 'time_tracking.employee_id', '=', 'employees.id') // Join with employees table
+        ->join('overtime_rules', 'time_tracking.employee_id', '=', 'overtime_rules.employee_id') // Join with overtime_rules table
+        ->where('employees.organization_id', $organizationId) // Filter by organization_id
+        ->where('employees.employment_type', 'Adhoc') // Filter for Full-Time employees
+        ->select(
+            // Employee fields
+            'employees.id as employee_id',
+            'employees.name as employee_name',
+            'employees.email',
+            'employees.employment_type',
+            
+            // Time tracking fields
+            'time_tracking.entry_date',
+            'time_tracking.start_time',
+            'time_tracking.end_time',
+            'time_tracking.working_hours',
+            'time_tracking.overtime',
+            'time_tracking.break_duration',
+            
+            // Overtime rules fields
+            'overtime_rules.monthly_overtime_start',
+            'overtime_rules.monthly_rate',
+            'overtime_rules.weekly_overtime_start',
+            'overtime_rules.weekly_rate',
+            'overtime_rules.daily_start_time',
+            'overtime_rules.daily_rate',
+            'overtime_rules.early_start_time',
+            'overtime_rules.early_start_rate',
+            'overtime_rules.saturday_rate',
+            'overtime_rules.saturday_is_working_day'
+        )
+        ->get();
 
-        return response()->json($timeTrackingData, 200);
+    return response()->json($timeTrackingData, 200);
     }
 
     public function deleteEmployee($id)
@@ -189,7 +277,7 @@ class TimeTrackingController extends Controller
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
-                'time_tracking.overtime'
+                // 'time_tracking.overtime'
             )
             ->get();
 
@@ -256,7 +344,7 @@ class TimeTrackingController extends Controller
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
-                'time_tracking.overtime'
+                // 'time_tracking.overtime'
             )
             ->get();
 

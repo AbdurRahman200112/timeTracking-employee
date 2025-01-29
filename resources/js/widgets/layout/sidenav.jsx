@@ -11,25 +11,24 @@ export function Sidenav({ brandImg, brandName, routes }) {
   const topRoutes = routes
     .map((route) => {
       if (route.layout === "dashboard") {
-        return { ...route, pages: route.pages.slice(0, 7) }; // Top 14 for dashboard
+        return { ...route, pages: route.pages.slice(0, 6) }; // Top 7 for dashboard
       } else if (route.layout === "auth") {
         return { ...route, pages: route.pages.slice(0, 1) }; // Top 1 for auth
       }
       return route; // Other layouts remain unchanged
     })
-    .slice(0, 20) // Ensure only the top 6 routes are included
+    .slice(0, 20) // Ensure only the top 20 routes are included
     .filter((route) => route.pages.length > 0); // Exclude layouts with no pages
 
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavColor, sidenavType, openSidenav } = controller;
-  const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const toggleDropdown = (name) => {
     setOpenDropdown((prev) => (prev === name ? null : name));
   };
 
   const closeSidenavOnMobile = () => {
-    // Closes sidenav only in mobile view
     if (window.innerWidth < 1280) {
       setOpenSidenav(dispatch, false);
     }
@@ -47,11 +46,40 @@ export function Sidenav({ brandImg, brandName, routes }) {
     transparent: "blue-gray",
   };
 
+  const scrollbarStyle = {
+    overflowY: "auto",
+    height: "calc(100vh - 100px)",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#FFF2D4 transparent",
+  };
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.innerHTML = `
+      .sidenav-scroll::-webkit-scrollbar {
+        width: 0.2px;
+        height: 0.2px;
+      }
+      .sidenav-scroll::-webkit-scrollbar-thumb {
+        background-color: orange;
+        border-radius: 10px;
+      }
+      .sidenav-scroll::-webkit-scrollbar-track {
+        background-color: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <aside
-      className={`${sidenavTypes[sidenavType]} ${
-        openSidenav ? "translate-x-0" : "-translate-x-80"
-      } fixed inset-0 z-50 my-4 ml-4 h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 xl:translate-x-0 border border-blue-gray-100`}
+      className={`${sidenavTypes[sidenavType]} ${openSidenav ? "translate-x-0" : "-translate-x-80"
+        } fixed inset-0 z-50 my-4 ml-4 h-[calc(100vh-32px)] ${window.innerWidth < 640 ? "w-72" : "w-80" // Use smaller width for mobile screens
+        } rounded-xl transition-transform duration-300 xl:translate-x-0 shadow-xl overflow-hidden`}
     >
       <div className="relative flex items-center">
         <Link to="/" className="py-6 px-8 text-center">
@@ -74,7 +102,15 @@ export function Sidenav({ brandImg, brandName, routes }) {
           <XMarkIcon strokeWidth={2.5} className="h-5 w-5 text-black" />
         </IconButton>
       </div>
-      <div className="m-4">
+      <div
+        className="m-4 sidenav-scroll"
+        style={{
+          overflowY: "auto",
+          height: "calc(100vh - 100px)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#FFF2D4 transparent",
+        }}
+      >
         {topRoutes.map(({ layout, title, pages }, key) => (
           <ul key={key} className="mb-4 flex text-black flex-col gap-1">
             {title && (
@@ -95,9 +131,8 @@ export function Sidenav({ brandImg, brandName, routes }) {
                     <Button
                       onClick={() => toggleDropdown(name)}
                       style={{ boxShadow: "none" }}
-                      className={`flex items-center text-black bg-white justify-between w-full px-4 ${
-                        openDropdown === name ? "bg-[#FFF2D4]" : ""
-                      }`}
+                      className={`flex items-center text-black bg-white justify-between w-full px-4 ${openDropdown === name ? "bg-[#FFF2D4]" : ""
+                        }`}
                     >
                       <span className="flex items-center gap-4">
                         {React.cloneElement(icon, {
@@ -134,9 +169,8 @@ export function Sidenav({ brandImg, brandName, routes }) {
                                       ? sidenavColor
                                       : buttonColors[sidenavType]
                                   }
-                                  className={`flex text-black items-center gap-4 px-4 capitalize ${
-                                    isActive ? "bg-[#fff2d4]" : ""
-                                  }`}
+                                  className={`flex text-black items-center gap-4 px-4 capitalize ${isActive ? "bg-[#fff2d4]" : ""
+                                    }`}
                                   fullWidth
                                 >
                                   <Typography
@@ -154,19 +188,15 @@ export function Sidenav({ brandImg, brandName, routes }) {
                     )}
                   </>
                 ) : (
-                  <NavLink
-                    to={`/${layout}${path}`}
-                    onClick={closeSidenavOnMobile}
-                  >
+                  <NavLink to={`/${layout}${path}`} onClick={closeSidenavOnMobile}>
                     {({ isActive }) => (
                       <Button
                         variant={isActive ? "filled" : "text"}
                         color={
                           isActive ? sidenavColor : buttonColors[sidenavType]
                         }
-                        className={`flex items-center gap-4 px-4 capitalize ${
-                          isActive ? "bg-[#fff2d4]" : ""
-                        }`}
+                        className={`flex items-center gap-4 px-4 capitalize ${isActive ? "bg-[#fff2d4]" : ""
+                          }`}
                         fullWidth
                       >
                         <span className="flex items-center gap-4">
@@ -190,6 +220,8 @@ export function Sidenav({ brandImg, brandName, routes }) {
         ))}
       </div>
     </aside>
+
+
   );
 }
 

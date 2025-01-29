@@ -147,7 +147,9 @@ export function Profile() {
 
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
+    <div className="min-h-screen px-4 py-8 bg-white"  style={{ width: "100%", padding: 0, margin: 0 }}>
+      <div className="w-100 mx-auto bg-white px-6 lg:px-12 py-10">     {/* Update Notification Section */}
+
       <h2 className="text-xl font-semibold mb-6">Employees</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 justify-center">
         {chartData.fullTime &&
@@ -215,6 +217,7 @@ export function Profile() {
           </table>
         </div>
       </div>
+    </div>
     </div>
   );
 }

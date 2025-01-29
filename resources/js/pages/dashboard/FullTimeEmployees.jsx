@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Line } from "react-chartjs-2";
 import axios from "axios";
-import Profiles from "../../../img/icons.png";
 import { UserGroupIcon, TrashIcon } from "@heroicons/react/24/solid";
 import Loader from "./Loader";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-
+import { FaFileCsv, FaFilePdf } from "react-icons/fa";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -19,7 +18,6 @@ import {
   PointElement,
 } from "chart.js";
 
-// Register ChartJS components
 ChartJS.register(
   ArcElement,
   Tooltip,
@@ -32,8 +30,9 @@ ChartJS.register(
 
 export function FullTimeEmployees() {
   const [timeData, setTimeData] = useState([]);
-  const [loading, setLoading] = useState(true); // State for loader
+  const [loading, setLoading] = useState(true);
   const [toggleExport, setToggleExport] = useState(false);
+  const dropdownRef = useRef(null);
 
   const [chartData, setChartData] = useState({
     fullTime: null,
@@ -42,7 +41,6 @@ export function FullTimeEmployees() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetching full-time employees chart data
         const response = await axios.get("/api/full-time");
         const fullTimeCount = response.data.length;
 
@@ -71,6 +69,18 @@ export function FullTimeEmployees() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setToggleExport(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const deleteEmployee = async (employeeId) => {
     try {
       await axios.delete(`/api/employee/${employeeId}`);
@@ -95,7 +105,19 @@ export function FullTimeEmployees() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Employee Name", "Email", "Employment Type", "Entry Date", "Start Time", "End Time", "Working Hours", "Overtime"];
+    const headers = ["Employee Name",
+      "Email",
+      "Employment Type",
+      "Entry Date",
+      "Start Time",
+      "End Time",
+      "Working Hours",
+      "Daily Start Time",
+      "Daily Rate",
+      "Weekly Overtime Start",
+      "Weekly Rate",
+      "monthly_overtime_start",
+      "Monthly Rate",];
     const rows = timeData.map((data) => [
       data.employee_name,
       data.email,
@@ -104,7 +126,12 @@ export function FullTimeEmployees() {
       data.start_time,
       data.end_time,
       data.working_hours,
-      data.ot1_3_rate,
+      data.daily_start_time,
+      data.daily_rate,
+      data.weekly_overtime_start,
+      data.weekly_rate,
+      data.monthly_overtime_start,
+      data.monthly_rate
     ]);
 
     const csvContent = [headers, ...rows]
@@ -117,7 +144,50 @@ export function FullTimeEmployees() {
     link.href = url;
     link.download = "employees.csv";
     link.click();
-    URL.revokeObjectURL(url); // Clean up URL object
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Weekly Timesheet", 14, 10);
+    doc.autoTable({
+      startY: 20,
+      head: [
+        [
+          "Employee Name",
+          "Email",
+          "Employment Type",
+          "Entry Date",
+          "Start Time",
+          "End Time",
+          "Working Hours",
+          "Daily Start Time",
+          "Daily Rate",
+          "Weekly Overtime Start",
+          "Weekly Rate",
+          "monthly_overtime_start",
+          "Monthly Rate",
+        ],
+      ],
+      body: timeData.map((data) => [
+        data.employee_name,
+        data.email,
+        data.employment_type,
+        data.entry_date,
+        data.start_time,
+        data.end_time,
+        data.working_hours,
+        data.daily_start_time,
+        data.daily_rate,
+        data.weekly_overtime_start,
+        data.weekly_rate,
+        data.monthly_overtime_start,
+        data.monthly_rate
+        
+      ]),
+
+    });
+    doc.save("employees.pdf");
   };
 
   const renderChart = (data, title) => (
@@ -126,7 +196,7 @@ export function FullTimeEmployees() {
         <div className="p-3 rounded-md bg-yellow-100 flex items-center justify-center">
           <UserGroupIcon className="w-5 h-5 text-black" />
         </div>
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 style={{ fontFamily: 'Poppins' }} className="text-sm font-medium">{title}</h3>
       </div>
 
       <div className="flex justify-center items-center" style={{ flexGrow: 1 }}>
@@ -171,168 +241,121 @@ export function FullTimeEmployees() {
       </div>
     </div>
   );
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Weekly Timesheet", 14, 10);
-    doc.autoTable({
-      startY: 20,
-      head: [
-        [
-          "Employee Name",
-          "Email",
-          "Employment Type",
-          "Entry Date",
-          "Start Time",
-          "End Time",
-          "Working Hours",
-          "OT1 Rate",
-        ],
-      ],
-      body: timeData.map((data) => [
-        data.employee_name,
-        data.email,
-        data.employment_type,
-        data.entry_date,
-        data.start_time,
-        data.end_time,
-        data.working_hours,
-        data.ot1_3_rate,
-      ]),
-    });
-    doc.save("employees.pdf");
-  };
 
   if (loading) {
-    return <Loader />; // Display loader while loading is true
+    return <Loader />;
   }
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h2 className="text-xl font-semibold mb-6">Full-Time Employees</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Full Time Employees Doughnut Chart */}
-        {chartData.fullTime && renderChart(chartData.fullTime, "Full Time Employees")}
-
-        {/* Weekly Overview Line Chart */}
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center w-full">
-          <h3 className="text-lg font-semibold mb-4">Weekly Overview</h3>
-          <Line
-            data={staticChartData}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { display: false },
-              },
-              scales: {
-                x: { grid: { display: false } },
-                y: { grid: { drawBorder: false } },
-              },
-            }}
-            height={80}
-          />
-        </div>
-      </div>
-
-      {/* Weekly Timesheet Section */}
-
-      {/* Weekly Timesheet Section */}
-      <div className="bg-white rounded-lg shadow-xl p-6 mt-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Weekly Timesheet</h2>
-          <div className="relative">
-            <button
-              onClick={() => setToggleExport(!toggleExport)}
-              className="text-orange-400 py-2 px-4 rounded"
-            >
-              Export Timesheet
-            </button>
-            {toggleExport && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
-                <button
-                  onClick={exportToCSV}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Export as CSV
-                </button>
-                <button
-                  onClick={exportToPDF}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Export as PDF
-                </button>
-              </div>
-            )}
+    <div className="min-h-screen bg-white px-4 py-8" style={{ width: "100%", padding: 0, margin: 0 }}>
+      <div className="p-8 min-h-screen">
+        <h2 style={{ fontFamily: 'Poppins' }} className="text-xl font-semibold mb-6">Full-Time Employees</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {chartData.fullTime && renderChart(chartData.fullTime, "Full Time Employees")}
+          <div className="bg-white rounded-lg shadow-lg p-6 text-center w-full">
+            <h3 style={{ fontFamily: 'Poppins' }} className="text-lg font-semibold mb-4">Weekly Overview</h3>
+            <Line
+              data={staticChartData}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { display: false },
+                },
+                scales: {
+                  x: { grid: { display: false } },
+                  y: { grid: { drawBorder: false } },
+                },
+              }}
+              height={80}
+            />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full ">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Employee Name</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Entry Date</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Start Time</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">End Time</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Break</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Total</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">OT1</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">OT2</th>
-                <th className="px-6 py-3 text-center text-sm font-medium text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timeData.map((data) => {
-                // Function to calculate total hours
-                const calculateTotalHours = (startTime, endTime, breakDuration) => {
-                  // Split start and end times into hours and minutes
-                  const [startHour, startMinute] = startTime.split(":").map(Number);
-                  const [endHour, endMinute] = endTime.split(":").map(Number);
 
-                  // Convert times to total minutes
-                  const startTotalMinutes = startHour * 60 + startMinute;
-                  const endTotalMinutes = endHour * 60 + endMinute;
+        <div className="bg-white rounded-lg shadow-xl p-6 mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Weekly Timesheet</h2>
+            <div ref={dropdownRef} className="relative">
+              <button
+                onClick={() => setToggleExport(!toggleExport)}
+                className="text-orange-400 py-2 px-4 rounded"
+              >
+                Export Timesheet
+              </button>
+              {toggleExport && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg">
+                  <button
+                    onClick={exportToCSV}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                  >
+                    <FaFileCsv className="mr-2 text-green-600" />
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={exportToPDF}
+                    style={{ fontFamily: 'Poppins' }}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                  >
+                    <FaFilePdf className="mr-2 text-red-600" />
+                    Export as PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">Employee Name</th>
+                  {/* <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">Entry Date</th> */}
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">Start Time</th>
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">End Time</th>
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">Break</th>
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-left text-sm font-medium text-gray-500">Total</th>
+                  <th style={{ fontFamily: 'Poppins' }} className="px-6 py-3 text-center text-sm font-medium text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timeData.map((data) => {
+                  const calculateTotalHours = (startTime, endTime, breakDuration) => {
+                    const [startHour, startMinute] = startTime.split(":").map(Number);
+                    const [endHour, endMinute] = endTime.split(":").map(Number);
+                    const startTotalMinutes = startHour * 60 + startMinute;
+                    const endTotalMinutes = endHour * 60 + endMinute;
+                    let totalMinutesWorked = endTotalMinutes - startTotalMinutes;
 
-                  // Calculate the difference in minutes
-                  let totalMinutesWorked = endTotalMinutes - startTotalMinutes;
+                    if (totalMinutesWorked < 0) {
+                      totalMinutesWorked += 24 * 60;
+                    }
 
-                  // Adjust for overnight shifts
-                  if (totalMinutesWorked < 0) {
-                    totalMinutesWorked += 24 * 60; // Add 24 hours in minutes
-                  }
+                    totalMinutesWorked -= breakDuration;
 
-                  // Subtract break duration
-                  totalMinutesWorked -= breakDuration;
+                    const totalHours = totalMinutesWorked / 60;
+                    return totalHours > 0 ? totalHours.toFixed(2) : "0.00";
+                  };
 
-                  // Convert back to hours and return
-                  const totalHours = totalMinutesWorked / 60;
-                  return totalHours > 0 ? totalHours.toFixed(2) : "0.00"; // Ensure no negative values
-                };
+                  const totalHours = calculateTotalHours(data.start_time, data.end_time, data.break_duration);
 
-                // Example usage
-                const totalHours = calculateTotalHours(data.start_time, data.end_time, data.break_duration);
-
-
-                return (
-                  <tr key={data.employee_id} className="border-b">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{data.employee_name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.entry_date}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.start_time}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.end_time}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.break_duration} mins</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{totalHours} hours</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.ot1_3_rate}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{data.ot1_3_rate}</td>
-                    <td className="px-6 py-4 text-center">
-                      <TrashIcon
-                        className="w-6 h-6 text-red-500 cursor-pointer inline-block"
-                        onClick={() => deleteEmployee(data.employee_id)}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-
-          </table>
+                  return (
+                    <tr key={data.employee_id} className="border-b">
+                      <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm font-medium text-gray-900">{data.employee_name}</td>
+                      {/* <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm text-gray-500">{data.entry_date}</td> */}
+                      <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm text-gray-500">{data.start_time}</td>
+                      <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm text-gray-500">{data.end_time}</td>
+                      <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm text-gray-500">{data.break_duration} mins</td>
+                      <td style={{ fontFamily: 'Poppins' }} className="px-6 py-4 text-sm text-gray-500">{data.working_hours} hrs</td>
+                      <td className="px-6 py-4 text-center">
+                        <TrashIcon
+                          className="w-6 h-6 text-red-500 cursor-pointer inline-block"
+                          onClick={() => deleteEmployee(data.employee_id)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

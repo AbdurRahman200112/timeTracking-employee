@@ -45,21 +45,20 @@ export function DashboardNavbar() {
   }, []);
 
   return (
-    <div>
+    <div style={{ backgroundColor: 'white' }}>
       <Navbar
-        color={fixedNavbar ? "white" : "transparent"}
-        className={`rounded-xl transition-all ${
-          fixedNavbar
+        color={fixedNavbar ? "white" : "white"}
+        className={`rounded-xl transition-all ${fixedNavbar
             ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
             : "px-0 py-1"
-        }`}
+          }`}
         fullWidth
         blurred={fixedNavbar}
       >
         <div className="flex flex-col-reverse justify-between gap-6 md:flex-row md:items-center">
           {/* Breadcrumbs and Page Title */}
           <div className="capitalize">
-            <Breadcrumbs
+            {/* <Breadcrumbs
               className={`bg-transparent p-0 transition-all ${fixedNavbar ? "mt-1" : ""}`}
             >
               <Typography
@@ -75,7 +74,7 @@ export function DashboardNavbar() {
             </Breadcrumbs>
             <Typography variant="h6" color="blue-gray">
               {page}
-            </Typography>
+            </Typography> */}
           </div>
 
           {/* Navbar Actions */}
@@ -120,7 +119,7 @@ export function DashboardNavbar() {
                   >
                     <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
                       <Avatar
-                        src={Profile}
+                        src={(organization && organization.profile) || Profile}
                         alt="User Avatar"
                         size="xl"
                         variant="circular"

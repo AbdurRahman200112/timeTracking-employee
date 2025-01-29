@@ -5,15 +5,12 @@ import "react-toastify/dist/ReactToastify.css";
 
 export function SignUp() {
   const [formData, setFormData] = useState({
-    organizationName: "",
-    contactEmail: "",
-    phoneNumber: "",
-    companyAddress: "",
+    name: "",
+    email: "",
+    contact: "",
     password: "",
     confirmPassword: "",
   });
-
-  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,37 +26,30 @@ export function SignUp() {
     }
   
     try {
-      const response = await fetch("/api/signup-organization", {
+      const response = await fetch("http://127.0.0.1:8000/api/signup-employees", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          organizationName: formData.organizationName,
-          contact_email: formData.contactEmail,
-          phoneNumber: formData.phoneNumber,
-          companyAddress: formData.companyAddress,
+          name: formData.name,
+          email: formData.email,
+          contact: formData.contact,
           password: formData.password,
         }),
       });
   
       if (response.ok) {
         const data = await response.json();
-        toast.success(data.message); // Show success message
+        toast.success(data.message);
         setFormData({
-          organizationName: "",
-          contactEmail: "",
-          phoneNumber: "",
-          companyAddress: "",
+          name: "",
+          email: "",
+          contact: "",
           password: "",
           confirmPassword: "",
         });
-      } else if (response.status === 500) {
-        // Email already exists
-        const errorData = await response.json();
-        toast.error("Email already exists.");
       } else {
-        // Other errors
         const errorData = await response.json();
         toast.error(errorData.message || "Signup failed. Try again.");
       }
@@ -69,7 +59,6 @@ export function SignUp() {
     }
   };
   
-
   return (
     <section className="m-8 flex">
       <div
@@ -96,10 +85,10 @@ export function SignUp() {
         >
           <div className="mb-4">
             <Input
-              name="organizationName"
+              name="name"
               size="lg"
               placeholder="Organization Name"
-              value={formData.organizationName}
+              value={formData.name}
               onChange={handleChange}
               className="w-full bg-gray-100 px-6 py-5 rounded-full focus:outline-none"
               required
@@ -107,11 +96,11 @@ export function SignUp() {
           </div>
           <div className="mb-4">
             <Input
-              name="contactEmail"
+              name="email"
               type="email"
               size="lg"
               placeholder="Email Address"
-              value={formData.contactEmail}
+              value={formData.email}
               onChange={handleChange}
               className="w-full bg-gray-100 px-6 py-5 rounded-full focus:outline-none"
               required
@@ -119,21 +108,10 @@ export function SignUp() {
           </div>
           <div className="mb-4">
             <Input
-              name="phoneNumber"
+              name="contact"
               size="lg"
               placeholder="Phone Number"
-              value={formData.phoneNumber}
-              className="w-full bg-gray-100 px-6 py-5 rounded-full focus:outline-none"
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <Input
-              name="companyAddress"
-              size="lg"
-              placeholder="Company Address"
-              value={formData.companyAddress}
+              value={formData.contact}
               className="w-full bg-gray-100 px-6 py-5 rounded-full focus:outline-none"
               onChange={handleChange}
               required

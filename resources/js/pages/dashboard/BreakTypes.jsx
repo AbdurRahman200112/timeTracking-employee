@@ -36,8 +36,9 @@ export function BreakTypes() {
   }
 
   return (
+    <div className="min-h-screen bg-white px-4 py-8" style={{ width: "100%", padding: 0, margin: 0 }}>
     <div className="p-4 md:p-6">
-      <h2 className="text-lg md:text-2xl font-semibold mb-4 md:mb-6">Employees</h2>
+      <h2 style={{ fontFamily: 'Poppins' }} className="text-lg md:text-2xl font-semibold mb-4 md:mb-6">Employees</h2>
       <div className="flex flex-col gap-4">
         {employees.map((employee) => (
           <div key={employee.id} className="bg-white shadow-md rounded-xl overflow-hidden">
@@ -53,14 +54,15 @@ export function BreakTypes() {
                   className="rounded-full border-4 border-orange-400 w-14 h-14 sm:w-16 sm:h-16"
                 />
                 <div>
-                  <h4 className="text-sm md:text-lg font-semibold text-gray-800">{employee.name}</h4>
-                  <p className="text-xs md:text-md text-gray-500">{employee.designation}</p>
+                  <h4 style={{ fontFamily: 'Poppins' }} className="text-sm md:text-lg font-semibold text-gray-800">{employee.name}</h4>
+                  <p style={{ fontFamily: 'Poppins' }} className="text-xs md:text-md text-gray-500">{employee.designation}</p>
                 </div>
               </div>
 
               {/* Right Section */}
               <div className="flex justify-end items-center flex-1 gap-4">
                 <span
+                style={{ fontFamily: 'Poppins' }}
                   className={`px-3 py-1 text-xs font-medium rounded-lg ${
                     employee.status === "Approve"
                       ? "bg-orange-100 text-orange-600"
@@ -88,58 +90,58 @@ export function BreakTypes() {
                       alt="Profile"
                       className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white z-10"
                     />
-                    <h4 className="text-sm md:text-lg font-semibold mt-2">{employee.name}</h4>
-                    <p className="text-xs md:text-md text-gray-500">{employee.designation}</p>
+                    <h4 style={{ fontFamily: 'Poppins' }} className="text-sm md:text-lg font-semibold mt-2">{employee.name}</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-xs md:text-md text-gray-500">{employee.designation}</p>
                   </div>
                 </div>
 
                 {/* Details Section */}
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">Hourly Rate</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">Hourly Rate</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.hourly_rate ? `$${employee.hourly_rate}` : "$0 / hr"}
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">Full Time Hours Per Month</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">Full Time Hours Per Month</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.full_time_hours_per_month ?? "160"} / hrs
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">Break Duration</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">Break Duration</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.break_duration || "7 minutes"}
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">Saturday Working</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">Saturday Working</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.saturday_working ? "Yes" : "No"}
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">Daily Overtime Rate</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">Daily Overtime Rate</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.daily_overtime_rate ? `${employee.daily_overtime_rate} $ / hr` : "10 $ / hr"}
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-600 text-sm md:text-md">OT1-3 Rate</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <h4 style={{ fontFamily: 'Poppins' }} className="font-semibold text-gray-600 text-sm md:text-md">OT1-3 Rate</h4>
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.ot1_3_rate ?? "20 $ / hr"}
                     </p>
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-600 text-sm md:text-md">Employment Type</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.employment_type || "Full-Time"}
                     </p>
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-600 text-sm md:text-md">Monthly Overtime rate</h4>
-                    <p className="text-gray-500 text-md md:text-md">
+                    <p style={{ fontFamily: 'Poppins' }} className="text-gray-500 text-md md:text-md">
                       {employee.monthly_overtime_rate || "7.00"}
                     </p>
                   </div>
@@ -149,6 +151,7 @@ export function BreakTypes() {
           </div>
         ))}
       </div>
+    </div>
     </div>
   );
 }

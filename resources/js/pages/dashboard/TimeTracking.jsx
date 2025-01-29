@@ -1,194 +1,154 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Button } from "@material-tailwind/react";
+import { FaPlayCircle, FaStopCircle } from "react-icons/fa";
 import axios from "axios";
-import Profiles from "../../../img/icons.png";
-import { Link } from "react-router-dom";
-import Loader from "./Loader";
-import { useReactToPrint } from "react-to-print";
 
 export function TimeTracking() {
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [latestEntry, setLatestEntry] = useState(null);
-    const [showExportOptions, setShowExportOptions] = useState(false);
+  const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [isRunning, setIsRunning] = useState(false);
+  const [timeEntries, setTimeEntries] = useState([]);
+  const intervalRef = useRef(null);
 
-    const componentRef = useRef();
+  // Load timer state from localStorage on mount
+  useEffect(() => {
+    const storedTime = JSON.parse(localStorage.getItem("timer")) || {
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    };
+    const storedIsRunning = JSON.parse(localStorage.getItem("isRunning")) || false;
 
-    useEffect(() => {
-        // Simulate 2-second loader for a better UX
-        setTimeout(() => {
-            axios
-                .get("/api/time-tracking")
-                .then((response) => {
-                    const sortedData = response.data.sort(
-                        (a, b) => new Date(b.entry_date) - new Date(a.entry_date)
-                    );
-                    setData(sortedData);
-                    if (sortedData.length > 0) {
-                        setLatestEntry(sortedData[0]);
-                    }
-                    setLoading(false);
-                })
-                .catch((error) => {
-                    console.error("Error fetching time tracking data:", error);
-                    setLoading(false);
-                });
-        }, 2000); // Add delay for loader simulation
-    }, []);
+    setTime(storedTime);
+    setIsRunning(storedIsRunning);
 
-    const handleExportCSV = () => {
-        const csvData = [
-            ["Employee Name", "Entry Date", "Start Time", "End Time", "Working Hours"],
-            ...data.map(item => [
-                item.employee_name || "Employee",
-                item.entry_date,
-                item.start_time,
-                item.end_time,
-                item.working_hours
-            ])
-        ];
+    if (storedIsRunning) {
+      startTimer();
+    }
+  }, []);
 
-        const csvContent = csvData
-            .map(e => e.join(","))
-            .join("\n");
-
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "time_tracking_data.csv";
-        link.click();
+  useEffect(() => {
+    const fetchTimeTrackingData = async () => {
+      try {
+        const response = await axios.get("/api/time-tracking", { withCredentials: true });
+        setTimeEntries(response.data);
+      } catch (error) {
+        console.error("Error fetching time tracking data:", error);
+      }
     };
 
-    const handlePrint = useReactToPrint({
-        content: () => componentRef.current,
-    });
+    fetchTimeTrackingData();
+  }, []);
 
-    if (loading) {
-        return <Loader />; // Display loader while loading is true
+  const startTimer = () => {
+    if (!isRunning && !intervalRef.current) {
+      intervalRef.current = setInterval(() => {
+        setTime((prev) => {
+          let { hours, minutes, seconds } = prev;
+          seconds++;
+          if (seconds === 60) {
+            seconds = 0;
+            minutes++;
+          }
+          if (minutes === 60) {
+            minutes = 0;
+            hours++;
+          }
+          const newTime = { hours, minutes, seconds };
+          localStorage.setItem("timer", JSON.stringify(newTime));
+          return newTime;
+        });
+      }, 1000);
+      setIsRunning(true);
+      localStorage.setItem("isRunning", JSON.stringify(true));
     }
+  };
 
-    return (
-        <div className="min-h-screen px-4 py-8 bg-gray-100" ref={componentRef}>
-            <div className="container mx-auto">
-                {/* Header Section */}
-                {latestEntry && (
-                    <div className="bg-white rounded-xl shadow-xl p-6 mb-8 flex flex-wrap gap-4 justify-between items-center">
-                        <div className="flex items-center w-full md:w-auto">
-                            <img
-                                src={Profiles}
-                                alt="Employee Avatar"
-                                className="rounded-full w-16 h-16 mr-4"
-                            />
-                            <div>
-                                <h2 className="text-lg font-semibold">
-                                    {latestEntry.employee_name || "Employee"}
-                                </h2>
-                                <p className="text-sm text-gray-500">Designer</p>
-                            </div>
-                        </div>
-                        <div className="text-center border-2 border-dashed border-black p-4 w-full md:w-auto">
-                            <h1 className="text-4xl font-semibold">10 : 00 : 00</h1>
-                            <span className="text-sm text-gray-500">Hr's Min Sec</span>
-                        </div>
-                        <div className="text-right w-full md:w-auto">
-                            <p className="text-sm text-gray-500">Over Time</p>
-                            <h1 className="text-2xl font-semibold text-red-500">0h:30min</h1>
-                        </div>
-                        <div className="text-center bg-orange-100 text-orange-600 px-4 py-2 rounded-lg w-full md:w-auto">
-                            <p className="text-sm">
-                                {new Date(latestEntry.entry_date).getDate()}
-                            </p>
-                            <p>
-                                {new Date(latestEntry.entry_date).toLocaleString("default", {
-                                    month: "long",
-                                })}
-                            </p>
-                        </div>
-                    </div>
-                )}
+  const pauseTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsRunning(false);
+    localStorage.setItem("isRunning", JSON.stringify(false));
+  };
 
-                {/* Weekly Timesheet Section */}
-                <div className="bg-white rounded-xl shadow-xl p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold">Weekly Timesheet</h2>
-                        <div className="flex space-x-4 text-sm text-gray-500">
-                            <button className="hover:text-black">Month</button>
-                            <button className="hover:text-black">Week</button>
-                            <button className="hover:text-black">2024</button>
-                            <div className="relative">
-                                <button
-                                    className="hover:text-black"
-                                    onClick={() => setShowExportOptions(!showExportOptions)}
-                                >
-                                    Export
-                                </button>
-                                {showExportOptions && (
-                                    <div className="absolute right-0 bg-white border shadow-lg rounded-lg mt-2 w-32">
-                                        <button
-                                            className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                                            onClick={handleExportCSV}
-                                        >
-                                            Export as CSV
-                                        </button>
-                                        <button
-                                            className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                                            onClick={handlePrint}
-                                        >
-                                            Export as PDF
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+  const stopTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setTime({ hours: 0, minutes: 0, seconds: 0 });
+    setIsRunning(false);
+    localStorage.removeItem("timer");
+    localStorage.setItem("isRunning", JSON.stringify(false));
+  };
 
-                    {/* Responsive Table */}
-                    <div className="overflow-hidden">
-                        {data.map((item, index) => (
-                            <Link to="/employeeDetails" key={index}>
-                                <div
-                                    className="bg-gray-50 border-b last:border-b-0 p-4 rounded-lg flex flex-col gap-4 md:grid md:grid-cols-5 md:gap-6 items-center mb-4"
-                                >
-                                    <div className="flex items-center gap-4 md:col-span-1">
-                                        <img
-                                            src={Profiles}
-                                            alt="Employee"
-                                            className="rounded-full w-10 h-10"
-                                        />
-                                        <span className="font-medium text-gray-700">
-                                            {item.employee_name || "Employee"}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm md:col-span-1">
-                                        <p className="text-gray-600">Entry Date:</p>
-                                        <p className="font-medium">{item.entry_date}</p>
-                                    </div>
-                                    <div className="text-sm md:col-span-1">
-                                        <p className="text-gray-600">Start Time:</p>
-                                        <p className="font-medium">{item.start_time}</p>
-                                    </div>
-                                    <div className="text-sm md:col-span-1">
-                                        <p className="text-gray-600">End Time:</p>
-                                        <p className="font-medium">{item.end_time}</p>
-                                    </div>
-                                    <div className="text-sm md:col-span-1">
-                                        <p className="text-gray-600">Working Hours:</p>
-                                        <span
-                                            className={`px-3 py-1 rounded-full text-sm font-semibold ${item.working_hours < "8:00"
-                                                ? "bg-yellow-100 text-yellow-600"
-                                                : "bg-orange-100 text-orange-600"
-                                                }`}
-                                        >
-                                            {item.working_hours}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="p-6 bg-white min-h-screen flex flex-col items-center">
+      <h1 className="text-lg font-bold mb-4 text-center">Time Tracking</h1>
+      <div className="bg-white p-6 shadow-xl rounded-xl w-full max-w-8xl">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <div className="flex items-center justify-center space-x-4">
+            <Button
+              onClick={isRunning ? stopTimer : startTimer}
+              className={`${isRunning ? "bg-red-500" : "bg-orange-500"} w-64 py-3 text-white rounded-full text-lg`}
+            >
+              {isRunning ? "Stop" : "Start"}
+            </Button>
+            <FaPlayCircle
+              className={`text-5xl cursor-pointer ${isRunning ? "text-blue-500" : "text-orange-500"}`}
+              onClick={isRunning ? pauseTimer : startTimer}
+            />
+          </div>
+
+          <div className="text-3xl font-bold border-dashed border-2 px-6 py-3 text-center">
+            {String(time.hours).padStart(2, "0")} : {String(time.minutes).padStart(2, "0")} : {String(time.seconds).padStart(2, "0")}
+          </div>
+
+          <div className="text-center">
+            <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-lg">Over Time</div>
+            <p className="text-red-500 font-bold">01h:30min</p>
+          </div>
+
+          <div className="text-center bg-orange-500 text-white px-6 py-4 rounded-lg text-lg">
+            <h3 className="text-xl font-bold">04</h3>
+            <p>September</p>
+          </div>
         </div>
-    );
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b bg-gray-100">
+                <th className="py-2 px-4">Date</th>
+                <th className="px-4">Location</th>
+                <th className="px-4">Start Time</th>
+                <th className="px-4">End Time</th>
+                <th className="px-4">Break</th>
+                <th className="px-4 text-right">Over Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeEntries.map((entry, index) => (
+                <tr key={index} className="border-b">
+                  <td className="py-2 px-4">{entry.entry_date}</td>
+                  <td className="px-4">{entry.employee_name}</td>
+                  <td className="px-4">{entry.start_time}</td>
+                  <td className="px-4">{entry.end_time}</td>
+                  <td className="px-4">{entry.break_duration}</td>
+                  <td className="px-4 text-right">
+                    <Button className="bg-orange-500 text-white px-4 py-2 rounded-lg">
+                      {entry.working_hours}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default TimeTracking;
