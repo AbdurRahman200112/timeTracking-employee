@@ -65,10 +65,6 @@ const timerSlice = createSlice({
       }
     },
 
-    /**
-     * Optional: A helper action if you want to store the current time (Date.now())
-     * into `startTime` and localStorage. This is NOT called by default—see notes below.
-     */
     setStartTime: (state, action) => {
       const newStartTime = action.payload || Date.now();
       state.startTime = newStartTime;
