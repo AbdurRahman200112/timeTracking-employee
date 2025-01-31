@@ -18,7 +18,7 @@ import { MdPersonOutline, MdLockOutline, MdNotificationsNone } from "react-icons
 import { Bars3Icon } from "@heroicons/react/24/solid";
 import { useMaterialTailwindController, setOpenSidenav } from "@/context";
 import axios from "axios";
-
+import image from "../../../img/profile.png";
 export function DashboardNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { fixedNavbar, openSidenav } = controller;
@@ -102,7 +102,8 @@ export function DashboardNavbar() {
               <Menu>
                 <MenuHandler>
                   <img
-                    src={(organization && organization.profile) || Profile}
+                    // src={(organization && organization.profile) || image}
+                    src={image}
                     className="flex items-center justify-center w-12 h-12 rounded-full cursor-pointer bg-[#fff2d4]"
                     alt="Profile"
                   />
@@ -119,7 +120,8 @@ export function DashboardNavbar() {
                   >
                     <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
                       <Avatar
-                        src={(organization && organization.profile) || Profile}
+                        // src={(organization && organization.profile) || image}
+                        src={image}
                         alt="User Avatar"
                         size="xl"
                         variant="circular"

@@ -5,7 +5,8 @@ import Profile from "../../../img/profile.png";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { PiArrowCircleUpLight } from "react-icons/pi";
 import Loader from "./Loader";
-
+import { Link } from "react-router-dom"; 
+// import Link from "react-csv/components/Link";
 const ToggleSwitch = ({ isEnabled, onToggle }) => (
   <label className="relative inline-flex items-center cursor-pointer" aria-label="Toggle switch">
     <input type="checkbox" className="sr-only" checked={isEnabled} onChange={onToggle} />
@@ -105,7 +106,9 @@ export function Notifications() {
                 <span style={{ fontFamily: "Poppins" }} className="flex items-center text-sm">
                   {admin.name || "Eden Markram"}
                   <button className="ml-2 text-orange-500">
+                    <Link to="/dashboard/edit-profile/1">
                     <PencilSquareIcon className="w-5 h-5" />
+                    </Link>
                   </button>
                 </span>
               </div>

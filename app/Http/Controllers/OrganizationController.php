@@ -168,97 +168,100 @@ class OrganizationController extends Controller
     }
 
     
+
     public function show($id)
     {
-        // Fetch specific fields from the organization, including profile
-        $organization = DB::table('employees')
-            ->select('name', 'email', 'contact', 'designation')
+        // Fetch specific fields from the employee table
+        $employee = DB::table('employees')
+            ->select('name', 'email', 'contact', 'profile')
             ->where('id', $id)
             ->first();
     
-        if (!$organization) {
-            return response()->json(['message' => 'Organization not found'], 404);
+        // If the employee is not found, return a 404 error
+        if (!$employee) {
+            return response()->json(['message' => 'Employee not found'], 404);
         }
     
-        // Add full URL for profile image
-        if ($organization->profile) {
-            $organization->profile = asset('storage/uploads/' . $organization->profile);
+        // Check if a profile image exists; otherwise, use a default image
+        if (!empty($employee->profile)) {
+            $employee->profile = asset('public/uploads' . $employee->profile);
+        } else {
+            $employee->profile = asset('storage/uploads/default.png'); // Ensure this file exists
         }
     
-        return response()->json($organization, 200);
+        return response()->json($employee, 200);
     }
-    
     
     public function update(Request $request, $id)
     {
-        // Log the start of the update method
         Log::info("Update method called for ID: $id");
     
         try {
-            // Validate fields and file upload
+            // Validate input data
             $validatedData = $request->validate([
-                'company_name' => 'nullable|string|max:255',
-                'contact_email' => 'nullable|email|max:255',
-                'contact_phone' => 'nullable|string|max:20',
-                'company_address' => 'nullable|string|max:255',
-                'profile' => 'nullable|file|mimes:jpg,jpeg,png|max:2048', // Validate file type and size
+                'name'    => 'nullable|string|max:255',
+                'email'   => 'nullable|email|max:255',
+                'contact' => 'nullable|string|max:20',
+                'profile' => 'nullable|file|mimes:jpg,jpeg,png|max:2048', // Validate image type & size
             ]);
     
-            // Log validated data
-            Log::info("Validated data: ", $validatedData);
-    
-            // Check if organization exists
-            $organization = DB::table('signed_up_organizations')->where('id', $id)->first();
-            if (!$organization) {
-                Log::error("Organization not found for ID: $id");
-                return response()->json(['message' => 'Organization not found'], 404);
+            // Fetch existing employee record
+            $employee = DB::table('employees')->where('id', $id)->first();
+            if (!$employee) {
+                Log::error("Employee not found for ID: $id");
+                return response()->json(['message' => 'Employee not found'], 404);
             }
     
-            // Log organization details
-            Log::info("Organization found: ", (array)$organization);
+            Log::info("Employee found: ", (array) $employee);
     
-            // Handle file upload
+            // Handle profile image upload if present
             if ($request->hasFile('profile')) {
-                Log::info("Profile file received: " . $request->file('profile')->getClientOriginalName());
+                Log::info("New profile image uploaded: " . $request->file('profile')->getClientOriginalName());
     
-                // Delete old profile image if exists
-                if ($organization->profile) {
-                    Storage::delete('public/uploads/' . $organization->profile);
-                    Log::info("Old profile deleted: " . $organization->profile);
+                // Delete old image if it exists and is not the default
+                if (!empty($employee->profile) && Storage::exists('uploads/' . $employee->profile)) {
+                    Storage::delete('uploads/' . $employee->profile);
+                    Log::info("Old profile image deleted: " . $employee->profile);
                 }
     
-                // Save new file
+                // Store new image
                 $file = $request->file('profile');
                 $fileName = time() . '_' . $file->getClientOriginalName();
+                
+                // Store file in 'storage/app/public/uploads' so it can be accessed via storage link
                 $file->storeAs('public/uploads', $fileName);
-                Log::info("New profile saved as: " . $fileName);
     
-                $validatedData['profile'] = $fileName;
-            } else {
-                Log::info("No profile file uploaded.");
+                Log::info("New profile image saved as: " . $fileName);
+    
+                // Save only the relative path in the database
+                $validatedData['profile'] = 'uploads/' . $fileName;
             }
     
-            // Update the database
-            DB::table('signed_up_organizations')
+            // Perform the update
+            DB::table('employees')
                 ->where('id', $id)
                 ->update(array_merge($validatedData, ['updated_at' => now()]));
+    
             Log::info("Database updated for ID: $id");
     
-            // Fetch updated organization
-            $updatedOrganization = DB::table('signed_up_organizations')
-                ->select('company_name', 'contact_email', 'contact_phone', 'monthly_plan', 'company_address', 'profile')
+            // Fetch updated record
+            $updatedEmployee = DB::table('employees')
+                ->select('id', 'name', 'email', 'contact', 'profile')
                 ->where('id', $id)
                 ->first();
     
-            Log::info("Updated organization: ", (array)$updatedOrganization);
+            // Convert 'profile' field to full URL if it exists
+            if (!empty($updatedEmployee->profile)) {
+                $updatedEmployee->profile = asset('storage/' . $updatedEmployee->profile);
+            }
     
             return response()->json([
-                'message' => 'Organization updated successfully',
-                'organization' => $updatedOrganization,
+                'message' => 'Profile updated successfully',
+                'employee' => $updatedEmployee,
             ]);
         } catch (\Exception $e) {
             Log::error("Error in update method for ID: $id. Message: " . $e->getMessage());
-            return response()->json(['message' => 'Error updating organization'], 500);
+            return response()->json(['message' => 'Error updating profile'], 500);
         }
     }
 }

@@ -31,16 +31,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::post('/signup-employees', [OrganizationController::class, 'register']);
 
-Route::get('/admins', [AdminController::class, 'index']);
-Route::post('/admins', [AdminController::class, 'store']);
+// Route::get('/admins', [AdminController::class, 'index']);
+// Route::post('/admins', [AdminController::class, 'store']);
 
 // Route::post('/login', [OrganizationController::class, 'login']);
 Route::post('/verify-code', [OrganizationController::class, 'verifyCode']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-Route::get('/admins/{id}', [AdminController::class, 'show']);
-Route::put('/admins/{id}', [AdminController::class, 'update']);
+// Route::get('/admins/{id}', [AdminController::class, 'show']);
+// Route::put('/admins/{id}', [AdminController::class, 'update']);
 Route::get('/employeeShow/{id}', [EmployeeDetails::class, 'show']);
 
 // Update employee details
@@ -60,7 +60,7 @@ Route::post('/approval/resubmit/{id}', [ApprovalController::class, 'updateStatus
 Route::delete('/employee/{id}', [EmployeeDetails::class, 'destroy']);
 
 Route::get('/admins/{id}', [OrganizationController::class, 'show']);
-Route::post('/admins/{id}', [OrganizationController::class, 'update']);
+Route::put('/updateAdmin/{id}', [OrganizationController::class, 'update']);
 Route::middleware('web')->group(function () {
     Route::post('/login', [OrganizationController::class, 'login']);
     Route::get('/organization/data/{userId?}', [OrganizationController::class, 'getOrganizationData']);

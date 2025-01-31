@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -31,21 +32,35 @@ class AdminController extends Controller
     }
     public function show($id)
     {
-        $admin = Admin::findOrFail($id);
+        // Get a single record from the 'admins' table using Query Builder
+        $admin = DB::table('employees')
+            ->where('id', $id)
+            ->first();
+
+        // If you want to emulate "findOrFail", you can manually handle the case where $admin is null
+        if (!$admin) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
         return response()->json($admin);
     }
 
     public function update(Request $request, $id)
     {
-        $admin = Admin::findOrFail($id);
-        $admin->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'designation' => $request->designation,
-            'phone_no' => $request->phone_no,
-            'address' => $request->address,
-        ]);
+        // Update the record
+        DB::table('employees')
+            ->where('id', $id)
+            ->update([
+                'name'        => $request->input('name'),
+                'email'       => $request->input('email'),
+                'contact'    => $request->input('contact'),
+            ]);
 
-        return response()->json($admin);
+        // Return the updated record (or you can just return a success message)
+        $updatedAdmin = DB::table('admins')
+            ->where('id', $id)
+            ->first();
+
+        return response()->json($updatedAdmin);
     }
 }

@@ -53,7 +53,8 @@ export function Tables() {
             <div className="flex flex-col items-center">
               <div className="p-2 rounded-full -mt-8 z-10">
                 <img
-                  src={organization.profile || Profile}
+                  // src={organization.profile || Profile}
+                  src={Profile}
                   alt="Profile Icon"
                   className="h-14 w-14 rounded-full"
                 />
@@ -92,7 +93,7 @@ export function Tables() {
                 style={{ fontFamily: 'Poppins' }}
                 onClick={handleEdit}
               >
-                Edit Organization
+                Edit
               </button>
             </div>
           </div>

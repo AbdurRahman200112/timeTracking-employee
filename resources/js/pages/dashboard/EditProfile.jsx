@@ -8,11 +8,10 @@ import ProfileImage from "../../../img/profile.png"; // Default profile image
 export function EditProfile() {
   const { id } = useParams();
   const [formData, setFormData] = useState({
-    company_name: "",
-    contact_email: "",
-    contact_phone: "",
-    company_address: "",
-    profile: "", // Profile image URL
+    name: "",
+    email: "",
+    contact: "",
+
   });
   const [profileImage, setProfileImage] = useState(null); // Profile image state
   const [imagePreview, setImagePreview] = useState(ProfileImage); // Default preview image
@@ -64,7 +63,7 @@ export function EditProfile() {
       }
 
       // Send the update request to the backend
-      await axios.post(`/api/admins/${id}`, formDataToSend, {
+      await axios.post(`/api/updateAdmin/${id}`, formDataToSend, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
