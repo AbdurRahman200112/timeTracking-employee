@@ -1,30 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Button } from "@material-tailwind/react";
 import { FaPlayCircle, FaStopCircle } from "react-icons/fa";
 import axios from "axios";
+import { useSelector, useDispatch } from "react-redux";
+import { startTimer, updateTime, pauseTimer, stopTimer } from "../../redux/timeSlice";
 
 export function TimeTracking() {
-  const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
-  const [isRunning, setIsRunning] = useState(false);
-  const [timeEntries, setTimeEntries] = useState([]);
+  const dispatch = useDispatch();
+  const { elapsedTime, isRunning } = useSelector((state) => state.timer);
   const intervalRef = useRef(null);
+  const [timeEntries, setTimeEntries] = React.useState([]);
 
   // Load timer state from localStorage on mount
   useEffect(() => {
-    const storedTime = JSON.parse(localStorage.getItem("timer")) || {
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-    };
-    const storedIsRunning = JSON.parse(localStorage.getItem("isRunning")) || false;
-
-    setTime(storedTime);
-    setIsRunning(storedIsRunning);
-
-    if (storedIsRunning) {
-      startTimer();
+    if (isRunning) {
+      startTimerInterval();
     }
-  }, []);
+  }, [isRunning]);
 
   useEffect(() => {
     const fetchTimeTrackingData = async () => {
@@ -39,48 +31,33 @@ export function TimeTracking() {
     fetchTimeTrackingData();
   }, []);
 
-  const startTimer = () => {
-    if (!isRunning && !intervalRef.current) {
+  const startTimerInterval = () => {
+    if (!intervalRef.current) {
       intervalRef.current = setInterval(() => {
-        setTime((prev) => {
-          let { hours, minutes, seconds } = prev;
-          seconds++;
-          if (seconds === 60) {
-            seconds = 0;
-            minutes++;
-          }
-          if (minutes === 60) {
-            minutes = 0;
-            hours++;
-          }
-          const newTime = { hours, minutes, seconds };
-          localStorage.setItem("timer", JSON.stringify(newTime));
-          return newTime;
-        });
+        dispatch(updateTime());
       }, 1000);
-      setIsRunning(true);
-      localStorage.setItem("isRunning", JSON.stringify(true));
     }
   };
 
-  const pauseTimer = () => {
+  const handleStart = () => {
+    dispatch(startTimer());
+    startTimerInterval();
+  };
+
+  const handlePause = () => {
+    dispatch(pauseTimer());
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    setIsRunning(false);
-    localStorage.setItem("isRunning", JSON.stringify(false));
   };
 
-  const stopTimer = () => {
+  const handleStop = () => {
+    dispatch(stopTimer());
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    setTime({ hours: 0, minutes: 0, seconds: 0 });
-    setIsRunning(false);
-    localStorage.removeItem("timer");
-    localStorage.setItem("isRunning", JSON.stringify(false));
   };
 
   return (
@@ -90,19 +67,19 @@ export function TimeTracking() {
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <div className="flex items-center justify-center space-x-4">
             <Button
-              onClick={isRunning ? stopTimer : startTimer}
+              onClick={isRunning ? handleStop : handleStart}
               className={`${isRunning ? "bg-red-500" : "bg-orange-500"} w-64 py-3 text-white rounded-full text-lg`}
             >
               {isRunning ? "Stop" : "Start"}
             </Button>
             <FaPlayCircle
               className={`text-5xl cursor-pointer ${isRunning ? "text-blue-500" : "text-orange-500"}`}
-              onClick={isRunning ? pauseTimer : startTimer}
+              onClick={isRunning ? handlePause : handleStart}
             />
           </div>
 
           <div className="text-3xl font-bold border-dashed border-2 px-6 py-3 text-center">
-            {String(time.hours).padStart(2, "0")} : {String(time.minutes).padStart(2, "0")} : {String(time.seconds).padStart(2, "0")}
+            {String(elapsedTime.hours).padStart(2, "0")} : {String(elapsedTime.minutes).padStart(2, "0")} : {String(elapsedTime.seconds).padStart(2, "0")}
           </div>
 
           <div className="text-center">

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   BarElement,
@@ -25,6 +25,15 @@ ChartJS.register(
 
 export function Home() {
   const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [currentDate, setCurrentDate] = useState({ day: "", month: "" });
+
+  useEffect(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0"); // Ensure two-digit format
+    const month = today.toLocaleString("default", { month: "long" }); // Get full month name
+
+    setCurrentDate({ day, month });
+  }, []);
 
   const workHoursData = {
     labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -49,7 +58,6 @@ export function Home() {
                 <div className="bg-orange-50 p-3 flex justify-center items-center rounded-full">
                   <FaClock className="text-orange-500" />
                 </div>
-
                  Work Hours
               </h2>
               <select className="bg-orange-50 rounded-full px-8 py-3">
@@ -62,8 +70,8 @@ export function Home() {
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  barPercentage: 0.4,  // Adjusts the width of each bar
-                  categoryPercentage: 0.6 // Adjusts spacing between bars
+                  barPercentage: 0.4,  
+                  categoryPercentage: 0.6
                 }}
               />
             </div>
@@ -82,14 +90,15 @@ export function Home() {
         </div>
       </div>
 
-      <div className="flex bg-white  flex-col md:flex-row justify-between items-center mt-6">
+      <div className="flex bg-white flex-col md:flex-row justify-between items-center mt-6">
         <Button className="bg-orange-500 ml-5 px-14 py-4 text-white text-lg" style={{ borderRadius: '28px' }}>Start</Button>
         <div className="text-3xl font-bold border-dashed border-2 px-8 py-4 md:mt-0">{`${time.hours} : ${time.minutes} : ${time.seconds}`}</div>
         <div className="text-center bg-orange-500 text-white px-6 py-6 rounded-lg text-lg mt-4 md:mt-0">
-          <h3 className="text-2xl font-bold" style={{ fontFamily: 'Poppins' }}>04</h3>
-          <p className="text-lg" style={{ fontFamily: 'Poppins' }}>September</p>
+          <h3 className="text-2xl font-bold" style={{ fontFamily: 'Poppins' }}>{currentDate.day}</h3>
+          <p className="text-lg" style={{ fontFamily: 'Poppins' }}>{currentDate.month}</p>
         </div>
       </div>
+      
       <div className="bg-white p-6 shadow-lg  overflow-x-auto">
         <table className="w-full text-left">
           <thead>
@@ -104,7 +113,7 @@ export function Home() {
           <tbody>
             {[...Array(4)].map((_, index) => (
               <tr key={index} className="border-b text-black">
-                <td className="py-2" style={{ fontFamily: 'Poppins' }}>04/09/2024</td>
+                <td className="py-2" style={{ fontFamily: 'Poppins' }}>{`${currentDate.day}/${new Date().getMonth() + 1}/2024`}</td>
                 <td style={{ fontFamily: 'Poppins' }}>8:30</td>
                 <td style={{ fontFamily: 'Poppins' }}>19:30</td>
                 <td style={{ fontFamily: 'Poppins' }}>00:30</td>
