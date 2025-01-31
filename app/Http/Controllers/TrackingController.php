@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // Import the Log facade
 
 class TrackingController extends Controller
 {
@@ -42,5 +43,104 @@ class TrackingController extends Controller
             ->get();
 
         return response()->json($counts);
+    }
+    // public function store(Request $request)
+    // {
+    //     // Retrieve the organization_id from the session
+    //     $employee_id = session('user_id'); // Ensure 'user_id' is correctly set in session
+        
+    //     if (!$employee_id) {
+    //         return response()->json(['message' => 'Unauthorized access.'], 403);
+    //     }
+    //     $validated = $request->validate([
+    //         'start_time' => 'required|date_format:H:i:s', 
+    //         'latitude'   => 'required|numeric',
+    //         'longitude'  => 'required|numeric',
+    //         'location'   => 'nullable|string',
+    //     ]);
+
+    //     // Insert into the database
+    //     DB::table('time_tracking')->insert([
+    //         'entry_date' => now()->format('Y-m-d'),
+    //         'start_time' => $validated['start_time'],
+    //         'latitude'   => $validated['latitude'],
+    //         'longitude'  => $validated['longitude'],
+    //         'location'   => $validated['location'],
+    //         'created_at' => now(),
+    //         'updated_at' => now(),
+    //     ]);
+
+    //     return response()->json(['message' => 'Timer started successfully!'], 201);
+    // }
+    public function start(Request $request)
+    {
+        // Retrieve employee_id from the session
+        $employee_id = session('user_id'); // Make sure 'user_id' is set during login
+        if (!$employee_id) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
+        // Validate required fields from the client
+        $validated = $request->validate([
+            'start_time' => 'required|date_format:H:i:s',
+            'latitude'   => 'required|numeric',
+            'longitude'  => 'required|numeric',
+            'location'   => 'nullable|string',
+        ]);
+
+        // Insert into time_tracking
+        DB::table('time_tracking')->insert([
+            'employee_id'     => $employee_id,
+            'organization_id' => 6, // Hard-coded or retrieved from session if needed
+            'entry_date'      => now()->format('Y-m-d'),
+            'start_time'      => $validated['start_time'],
+            'latitude'        => $validated['latitude'],
+            'longitude'       => $validated['longitude'],
+            'location'        => $validated['location'],
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return response()->json(['message' => 'Timer started successfully'], 201);
+    }
+
+    /**
+     * POST: Stop the timer.
+     */
+    public function stop(Request $request)
+    {
+        // Retrieve employee_id from session
+        $employee_id = session('user_id');
+        if (!$employee_id) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
+        // Validate required field from the client
+        $validated = $request->validate([
+            'end_time' => 'required|date_format:H:i:s',
+        ]);
+
+        // Find the most recent row for this employee that doesn't have an end_time
+        $latestEntry = DB::table('time_tracking')
+            ->where('employee_id', $employee_id)
+            ->whereNull('end_time')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$latestEntry) {
+            return response()->json([
+                'message' => 'No active timer found for this user.',
+            ], 404);
+        }
+
+        // Update the record with end_time
+        DB::table('time_tracking')
+            ->where('id', $latestEntry->id)
+            ->update([
+                'end_time'   => $validated['end_time'],
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['message' => 'Timer stopped successfully'], 200);
     }
 }

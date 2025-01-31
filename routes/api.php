@@ -58,6 +58,11 @@ Route::get('/organization/{organizationId}/employees', [EmployeeController::clas
 
 Route::post('/approval/resubmit/{id}', [ApprovalController::class, 'updateStatusToResubmit']);
 Route::delete('/employee/{id}', [EmployeeDetails::class, 'destroy']);
+// POST to start the timer (insert row w/ start_time, lat, long, location)
+Route::post('/time-tracking/start', [TrackingController::class, 'start']);
+
+// POST to stop the timer (update row w/ end_time)
+Route::post('/time-tracking/stop', [TrackingController::class, 'stop']);
 
 Route::get('/admins/{id}', [OrganizationController::class, 'show']);
 Route::put('/updateAdmin/{id}', [OrganizationController::class, 'update']);
@@ -77,6 +82,10 @@ Route::middleware('web')->group(function () {
     Route::get('/break-details', [BreakTypeController::class, 'getEmployeeDetails']);
     Route::get('/recent-employees', [EmployeeController::class, 'getRecentEmployees']);
     Route::put('/updateEmployee/{id}', [EmployeeDetails::class, 'update']);
+    Route::post('/time-tracking/start', [TrackingController::class, 'start']);
+
+// POST to stop the timer (update row w/ end_time)
+Route::post('/time-tracking/stop', [TrackingController::class, 'stop']);
 
 });
 

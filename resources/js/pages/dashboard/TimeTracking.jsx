@@ -12,38 +12,37 @@ import {
 
 export function TimeTracking() {
   const dispatch = useDispatch();
-  // Redux states
   const { elapsedTime, isRunning } = useSelector((state) => state.timer);
 
-  // Keep track of whether the timer is paused (distinct from fully stopped)
+  // Distinguish between paused vs. fully stopped
   const [isPaused, setIsPaused] = useState(false);
 
-  // Interval ref for the setInterval
+  // Interval for the timer
   const intervalRef = useRef(null);
 
-  // Example: entries from your backend
+  // Table data from backend
   const [timeEntries, setTimeEntries] = useState([]);
 
-  // Store city name after reverse-geocoding
+  // Reverse-geocoded city name
   const [cityName, setCityName] = useState("");
 
-  // -----------------------------------------------------------
-  // 1. If the timer is running on mount, re-start the interval
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
+  // 1. If the timer was running on mount, restart the interval
+  // --------------------------------------------------------------------
   useEffect(() => {
     if (isRunning) {
       startTimerInterval();
     }
   }, [isRunning]);
 
-  // -----------------------------------------------------------
-  // 2. Fetch time-tracking data
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
+  // 2. Fetch existing time entries from DB
+  // --------------------------------------------------------------------
   useEffect(() => {
     const fetchTimeTrackingData = async () => {
       try {
         const response = await axios.get("/api/time-tracking", {
-          withCredentials: true,
+          withCredentials: true, // Make sure cookies/sessions are sent
         });
         setTimeEntries(response.data);
       } catch (error) {
@@ -53,13 +52,13 @@ export function TimeTracking() {
     fetchTimeTrackingData();
   }, []);
 
-  // -----------------------------------------------------------
-  // Timer interval logic
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
+  // Timer logic
+  // --------------------------------------------------------------------
   const startTimerInterval = () => {
     if (!intervalRef.current) {
       intervalRef.current = setInterval(() => {
-        dispatch(updateTime()); // increments time if isRunning = true
+        dispatch(updateTime());
       }, 1000);
     }
   };
@@ -71,55 +70,75 @@ export function TimeTracking() {
     }
   };
 
-  // -----------------------------------------------------------
-  // 3. Start from zero with geolocation
-  //    (only if fully stopped, not paused)
-  // -----------------------------------------------------------
+  // Helper: format time as HH:MM:SS (24-hour)
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    return now.toLocaleTimeString("en-GB", { hour12: false }); // e.g. "08:30:00"
+  };
+
+  // --------------------------------------------------------------------
+  // 3. Start => calls geolocation, reverse-geocode, posts to /start
+  // --------------------------------------------------------------------
   const handleStartWithGeo = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         console.log("Coordinates:", latitude, longitude);
 
-        // Reverse-Geocode for city name
+        // Reverse-geocode city name (optional)
+        let determinedCity = "Unknown location";
         try {
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_API_KEY`;
-          const response = await fetch(geocodeUrl);
-          const data = await response.json();
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyC9NY_mMXuLB2oTMbZMG4vYO0Y0VqfbrlQ`;
+          const geoRes = await fetch(geocodeUrl);
+          const geoData = await geoRes.json();
 
-          if (data.results && data.results.length > 0) {
+          if (geoData.results && geoData.results.length > 0) {
             let foundCity = null;
-            const addressComponents = data.results[0].address_components || [];
-
-            for (const component of addressComponents) {
-              if (component.types.includes("locality")) {
-                foundCity = component.long_name;
+            const comps = geoData.results[0].address_components || [];
+            for (const c of comps) {
+              if (c.types.includes("locality")) {
+                foundCity = c.long_name;
                 break;
               }
             }
             if (foundCity) {
-              setCityName(foundCity);
-            } else if (data.results[0].formatted_address) {
-              setCityName(data.results[0].formatted_address);
-            } else {
-              setCityName("Unknown location");
+              determinedCity = foundCity;
+            } else if (geoData.results[0].formatted_address) {
+              determinedCity = geoData.results[0].formatted_address;
             }
-          } else {
-            setCityName("Unknown location");
           }
-        } catch (error) {
-          console.error("Error reverse-geocoding location:", error);
-          setCityName("Unknown location");
+        } catch (err) {
+          console.error("Error reverse-geocoding:", err);
+        }
+        setCityName(determinedCity);
+
+        // Format local time => "HH:MM:SS"
+        const startTimeString = getCurrentTimeString();
+
+        // Post to /api/time-tracking/start
+        try {
+          await axios.post(
+            "/api/time-tracking/start",
+            {
+              start_time: startTimeString,
+              latitude,
+              longitude,
+              location: determinedCity,
+            },
+            { withCredentials: true }
+          );
+          console.log("Timer started in DB successfully.");
+        } catch (err) {
+          console.error("Error starting timer in DB:", err);
         }
 
-        // Actually start the timer
-        dispatch(startTimer()); // sets isRunning = true in Redux
+        // Start Redux timer
+        dispatch(startTimer());
         startTimerInterval();
-        setIsPaused(false); // not paused
+        setIsPaused(false);
       },
       (error) => {
         console.error("Geolocation error:", error);
-        // If user denies location, do not start
       },
       {
         enableHighAccuracy: true,
@@ -129,36 +148,51 @@ export function TimeTracking() {
     );
   };
 
-  // -----------------------------------------------------------
-  // 4. Pause without resetting
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
+  // 4. Pause (just stops local timer, no DB call)
+  // --------------------------------------------------------------------
   const handlePause = () => {
-    dispatch(pauseTimer()); // sets isRunning = false, keeps time
+    dispatch(pauseTimer());
     clearTimerInterval();
     setIsPaused(true);
   };
 
-  // -----------------------------------------------------------
-  // 5. Resume (no geolocation, no reset)
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
+  // 5. Resume (just resumes local timer, no DB call)
+  // --------------------------------------------------------------------
   const handleResume = () => {
-    dispatch(startTimer()); // sets isRunning = true
+    dispatch(startTimer());
     startTimerInterval();
     setIsPaused(false);
   };
 
-  // -----------------------------------------------------------
-  // 6. Stop (resets to 0)
-  // -----------------------------------------------------------
-  const handleStop = () => {
-    dispatch(stopTimer()); // sets time = 0, isRunning = false
+  // --------------------------------------------------------------------
+  // 6. Stop => sets end_time in DB
+  // --------------------------------------------------------------------
+  const handleStop = async () => {
+    const endTimeString = getCurrentTimeString();
+
+    try {
+      // POST to /api/time-tracking/stop
+      await axios.post(
+        "/api/time-tracking/stop",
+        { end_time: endTimeString },
+        { withCredentials: true }
+      );
+      console.log("Timer stopped in DB successfully.");
+    } catch (err) {
+      console.error("Error stopping timer in DB:", err);
+    }
+
+    // Reset Redux timer
+    dispatch(stopTimer());
     clearTimerInterval();
-    setIsPaused(false); // no longer paused
+    setIsPaused(false);
   };
 
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
   // Render
-  // -----------------------------------------------------------
+  // --------------------------------------------------------------------
   return (
     <div className="p-6 bg-white min-h-screen flex flex-col items-center">
       <h1 className="text-lg font-bold mb-4 text-center">Time Tracking</h1>
@@ -173,15 +207,13 @@ export function TimeTracking() {
 
       <div className="bg-white p-6 shadow-xl rounded-xl w-full max-w-8xl">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          {/* MAIN BUTTON: Start or Stop */}
+          {/* Start/Stop Button */}
           <div className="flex items-center space-x-4">
             <Button
               onClick={() => {
                 if (!isRunning && !isPaused) {
-                  // If fully stopped => Start with geo
                   handleStartWithGeo();
                 } else {
-                  // If running or paused => Stop (reset to 0)
                   handleStop();
                 }
               }}
@@ -192,7 +224,7 @@ export function TimeTracking() {
               {!isRunning && !isPaused ? "Start" : "Stop"}
             </Button>
 
-            {/* ICON: Pause or Resume (only visible if we've started or paused) */}
+            {/* Pause/Resume Icon */}
             {(isRunning || isPaused) && (
               <>
                 {isPaused ? (
@@ -210,14 +242,14 @@ export function TimeTracking() {
             )}
           </div>
 
-          {/* TIMER DISPLAY */}
+          {/* Timer Display */}
           <div className="text-3xl font-bold border-dashed border-2 px-6 py-3 text-center">
             {String(elapsedTime.hours).padStart(2, "0")} :{" "}
             {String(elapsedTime.minutes).padStart(2, "0")} :{" "}
             {String(elapsedTime.seconds).padStart(2, "0")}
           </div>
 
-          {/* Over Time (example) */}
+          {/* Over Time Example */}
           <div className="text-center">
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-lg">
               Over Time
@@ -225,39 +257,33 @@ export function TimeTracking() {
             <p className="text-red-500 font-bold">01h:30min</p>
           </div>
 
-          {/* Date Section (example) */}
+          {/* Date Example */}
           <div className="text-center bg-orange-500 text-white px-6 py-4 rounded-lg text-lg">
             <h3 className="text-xl font-bold">04</h3>
             <p>September</p>
           </div>
         </div>
 
-        {/* Example table of time entries */}
+        {/* Table of Existing Entries */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b bg-gray-100">
-                <th className="py-2 px-4">Date</th>
+                <th className="px-4">Date</th>
+                <th className="px-4">Employee</th>
+                <th className="px-4">Start</th>
+                <th className="px-4">End</th>
                 <th className="px-4">Location</th>
-                <th className="px-4">Start Time</th>
-                <th className="px-4">End Time</th>
-                <th className="px-4">Break</th>
-                <th className="px-4 text-right">Over Time</th>
               </tr>
             </thead>
             <tbody>
-              {timeEntries.map((entry, index) => (
-                <tr key={index} className="border-b">
-                  <td className="py-2 px-4">{entry.entry_date}</td>
-                  <td className="px-4">{entry.employee_name}</td>
+              {timeEntries.map((entry) => (
+                <tr key={entry.id} className="border-b">
+                  <td className="px-4">{entry.entry_date}</td>
+                  <td className="px-4">{entry.employee_id}</td>
                   <td className="px-4">{entry.start_time}</td>
-                  <td className="px-4">{entry.end_time}</td>
-                  <td className="px-4">{entry.break_duration}</td>
-                  <td className="px-4 text-right">
-                    <Button className="bg-orange-500 text-white px-4 py-2 rounded-lg">
-                      {entry.working_hours}
-                    </Button>
-                  </td>
+                  <td className="px-4">{entry.end_time || "--:--:--"}</td>
+                  <td className="px-4">{entry.location || "N/A"}</td>
                 </tr>
               ))}
             </tbody>
