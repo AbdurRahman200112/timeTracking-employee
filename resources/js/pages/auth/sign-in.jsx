@@ -81,6 +81,17 @@ export function SignIn() {
     }
   };
 
+  // Handle OTP paste
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData("text/plain").trim();
+    if (/^\d+$/.test(pasteData) && pasteData.length === otp.length) {
+      const newOtp = pasteData.split("");
+      setOtp(newOtp);
+      document.getElementById(`otp-input-${otp.length - 1}`).focus();
+    }
+  };
+
   // Verify OTP
   const handleVerifyCode = async (e) => {
     e.preventDefault();
@@ -222,6 +233,7 @@ export function SignIn() {
                     maxLength="1"
                     value={value}
                     onChange={(e) => handleOtpChange(e.target.value, index)}
+                    onPaste={handleOtpPaste}
                     className="w-12 h-12 text-center text-lg font-medium bg-gray-100 rounded-lg focus:outline-none"
                   />
                 ))}

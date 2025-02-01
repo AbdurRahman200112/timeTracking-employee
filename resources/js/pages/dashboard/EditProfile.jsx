@@ -84,7 +84,7 @@ export function EditProfile() {
             {/* Profile image display */}
             <div className="relative group">
               <img
-                src={imagePreview}
+                src={ProfileImage}
                 alt="Profile Icon"
                 className="h-32 w-32 mt-5 rounded-full object-cover mx-auto border-4 border-gray-300"
               />

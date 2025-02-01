@@ -50,12 +50,12 @@ const routes = [
         path: "/approval",
         element: <Approval />,
       },
-      {
-        icon: <FaTasks {...icon} />,
-        name: "Tasks",
-        path: "/tasks",
-        element: <LiveMetrics />,
-      },
+      // {
+      //   icon: <FaTasks {...icon} />,
+      //   name: "Tasks",
+      //   path: "/tasks",
+      //   element: <LiveMetrics />,
+      // },
       // {
       //   icon: <PiMapPinLineFill {...icon} />,
       //   name: "Gps tracking",

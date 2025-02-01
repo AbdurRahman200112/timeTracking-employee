@@ -11,7 +11,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
   const topRoutes = routes
     .map((route) => {
       if (route.layout === "dashboard") {
-        return { ...route, pages: route.pages.slice(0, 6) }; // Top 7 for dashboard
+        return { ...route, pages: route.pages.slice(0, 5) }; // Top 7 for dashboard
       } else if (route.layout === "auth") {
         return { ...route, pages: route.pages.slice(0, 1) }; // Top 1 for auth
       }
