@@ -56,7 +56,7 @@ Route::put('/approval/updates/{id}', [ApprovalController::class, 'update']);
 
 Route::get('/organization/{organizationId}/employees', [EmployeeController::class, 'getEmployeesByOrganization']);
 
-Route::post('/approval/resubmit/{id}', [ApprovalController::class, 'updateStatusToResubmit']);
+Route::put('/approval/resubmit/{id}', [ApprovalController::class, 'updateStatusToResubmit']);
 Route::delete('/employee/{id}', [EmployeeDetails::class, 'destroy']);
 // POST to start the timer (insert row w/ start_time, lat, long, location)
 Route::post('/time-tracking/start', [TrackingController::class, 'start']);

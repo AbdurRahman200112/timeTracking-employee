@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
 class ApprovalController extends Controller
 {
     public function index(Request $request)
@@ -19,7 +19,7 @@ class ApprovalController extends Controller
             ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
             ->where('time_tracking.employee_id', $employeeId)  // Filter by the employee ID from the session
             ->select(
-                'employees.id as employee_id',
+                'time_tracking.id as id',
                 'employees.email',
                 'employees.employment_type',
                 'time_tracking.entry_date',
@@ -111,18 +111,38 @@ class ApprovalController extends Controller
         }
     }
 
-    public function updateStatusToResubmit($id)
+    public function updateStatusToResubmit($trackingId)
     {
         try {
-            // Update status to 'Resubmit' in time_tracking
-            DB::table('time_tracking')
-                ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
-                ->where('employees.id', $id)
-                ->update(['time_tracking.status' => 'Resubmit']);
+            // Log the request ID
+            Log::info("Resubmitting status for tracking ID: $trackingId");
     
-            return response()->json(["message" => "Status updated to Resubmit for Approval"]);
+            // Find the specific time tracking entry
+            $entry = DB::table('time_tracking')->where('id', $trackingId)->first();
+    
+            if (!$entry) {
+                Log::warning("Tracking entry not found for ID: $trackingId");
+                return response()->json(["message" => "Entry not found"], 404);
+            }
+    
+            // Update only the specific record
+            DB::table('time_tracking')
+                ->where('id', $trackingId)
+                ->update(['status' => 'Resubmit']);
+    
+            Log::info("Successfully updated status to 'Resubmit' for tracking ID: $trackingId");
+    
+            return response()->json(["message" => "Status updated to Resubmit successfully"]);
         } catch (\Exception $e) {
-            return response()->json(["message" => "Entry not found or update failed"], 404);
+            // Log the error details
+            Log::error("Error updating status to Resubmit for ID: $trackingId", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+    
+            return response()->json(["message" => "Update failed"], 500);
         }
-    }
+    
+    
+}
 }

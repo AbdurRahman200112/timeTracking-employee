@@ -7,7 +7,6 @@ import Loader from "./Loader";
 
 export function Approval() {
   const [timeTrackingData, setTimeTrackingData] = useState([]);
-  const [activeDropdown, setActiveDropdown] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -32,17 +31,17 @@ export function Approval() {
       });
   };
 
-  // ✅ Handle Resubmission & Update Only That Entry
-  const handleResubmit = (employeeId) => {
+  // ✅ Update Only the Specific Tracking ID
+  const handleResubmit = (trackingId) => {
     axios
-      .post(`/api/approval/resubmit/${employeeId}`)
+      .put(`/api/approval/resubmit/${trackingId}`)
       .then((response) => {
         toast.success(response.data.message || "Resubmitted successfully.");
 
-        // **Update status locally instead of fetching again**
+        // Update only the specific entry’s status in the state
         setTimeTrackingData((prevData) =>
           prevData.map((entry) =>
-            entry.employee_id === employeeId ? { ...entry, status: "Approve" } : entry
+            entry.id === trackingId ? { ...entry, status: "Resubmit" } : entry
           )
         );
       })
@@ -52,13 +51,39 @@ export function Approval() {
       });
   };
 
-  // **Filter Entries by Status**
+  // ✅ Filter by Date Range (Last 24 Hours, Last Week, Last Month)
+  const filterByDateRange = (entryDate) => {
+    if (dateFilter === "all") return true;
+
+    const entryDateTime = new Date(entryDate);
+    const now = new Date();
+
+    if (dateFilter === "last_24_hours") {
+      const last24Hours = new Date();
+      last24Hours.setHours(last24Hours.getHours() - 24);
+      return entryDateTime >= last24Hours;
+    }
+    if (dateFilter === "last_week") {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      return entryDateTime >= lastWeek;
+    }
+    if (dateFilter === "last_month") {
+      const lastMonth = new Date();
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      return entryDateTime >= lastMonth;
+    }
+    return true;
+  };
+
+  // ✅ Apply Status and Date Filters
   const filteredData = timeTrackingData.filter((entry) => {
-    if (statusFilter === "all") return true;
-    return entry.status === statusFilter;
+    const statusMatch = statusFilter === "all" || entry.status === statusFilter;
+    const dateMatch = filterByDateRange(entry.entry_date);
+    return statusMatch && dateMatch;
   });
 
-  // **Pagination Logic**
+  // ✅ Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
@@ -81,7 +106,7 @@ export function Approval() {
         </h2>
 
         {/* Filters Section */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {/* Status Filter */}
           <div>
             <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700">
@@ -97,6 +122,24 @@ export function Approval() {
               <option value="Approve">Approve</option>
               <option value="Disapprove">Disapprove</option>
               <option value="Resubmit">Resubmit</option>
+            </select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div>
+            <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700">
+              Filter by Date:
+            </label>
+            <select
+              id="dateFilter"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="mt-2 block w-full px-4 py-3 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg shadow-md focus:outline-none"
+            >
+              <option value="all">All</option>
+              <option value="last_24_hours">Last 24 Hours</option>
+              <option value="last_week">Last Week</option>
+              <option value="last_month">Last Month</option>
             </select>
           </div>
         </div>
@@ -127,11 +170,11 @@ export function Approval() {
                   <td className="px-6 py-4">
                     <button
                       className={`px-4 py-2 text-sm flex items-center gap-2 ${
-                        entry.status === "Approve"
+                        entry.status === "Approve" || entry.status === "Resubmit"
                           ? "text-gray-400 cursor-not-allowed"
                           : "text-gray-700 hover:bg-gray-100 cursor-pointer"
                       }`}
-                      onClick={() => entry.status !== "Approve" && handleResubmit(entry.employee_id)}
+                      onClick={() => entry.status !== "Approve" && entry.status !== "Resubmit" && handleResubmit(entry.id)}
                     >
                       <FaEdit className="w-5 h-5 inline-block" />
                       Resubmit
@@ -141,21 +184,6 @@ export function Approval() {
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-center mt-6 space-x-2">
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-            <button
-              key={page}
-              className={`px-4 py-2 rounded-lg ${
-                currentPage === page ? "bg-orange-500 text-white" : "bg-gray-200 text-gray-700"
-              }`}
-              onClick={() => handlePageChange(page)}
-            >
-              {page}
-            </button>
-          ))}
         </div>
       </div>
     </div>

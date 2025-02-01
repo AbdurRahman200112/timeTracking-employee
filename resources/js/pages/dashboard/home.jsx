@@ -265,43 +265,44 @@ export function Home() {
         </div>
       </div>
 
-      <div className="flex bg-white flex-col md:flex-row justify-between items-center mt-6">
+      {/* Timer and Buttons Section */}
+      <div className="flex bg-white flex-col md:flex-row justify-between items-center mt-6 gap-4">
+        {/* Start/Stop Button */}
         <Button
           onClick={isRunning ? handleStop : handleStartWithGeo}
           className={`${
             isRunning ? "bg-red-500" : "bg-orange-500"
-          } ml-5 px-14 py-4 text-white text-lg`}
+          } px-14 py-4 text-white text-lg`}
           style={{ borderRadius: '28px' }}
         >
           {isRunning ? "Stop" : "Start"}
         </Button>
-        <div className="text-3xl font-bold border-dashed border-2 px-8 py-4 md:mt-0">
+
+        {/* Pause/Resume Button */}
+        {(isRunning || isPaused) && (
+          <Button
+            onClick={isPaused ? handleResume : handlePause}
+            className="bg-blue-500 px-14 py-4 text-white text-lg"
+            style={{ borderRadius: '28px' }}
+          >
+            {isPaused ? "Resume" : "Pause"}
+          </Button>
+        )}
+
+        {/* Timer Display */}
+        <div className="text-3xl font-bold border-dashed border-2 px-8 py-4">
           {`${String(time.hours).padStart(2, "0")} : ${String(time.minutes).padStart(2, "0")} : ${String(time.seconds).padStart(2, "0")}`}
         </div>
-        <div className="text-center bg-orange-500 text-white px-6 py-6 rounded-lg text-lg mt-4 md:mt-0">
+
+        {/* Date Display */}
+        <div className="text-center bg-orange-500 text-white px-6 py-6 rounded-lg text-lg">
           <h3 className="text-2xl font-bold" style={{ fontFamily: 'Poppins' }}>{currentDate.day}</h3>
           <p className="text-lg" style={{ fontFamily: 'Poppins' }}>{currentDate.month}</p>
         </div>
       </div>
 
-      {/* Pause/Resume Buttons */}
-      {(isRunning || isPaused) && (
-        <div className="flex justify-center mt-4">
-          {isPaused ? (
-            <FaPlayCircle
-              onClick={handleResume}
-              className="text-5xl cursor-pointer text-blue-500"
-            />
-          ) : (
-            <FaPauseCircle
-              onClick={handlePause}
-              className="text-5xl cursor-pointer text-blue-500"
-            />
-          )}
-        </div>
-      )}
-
-      <div className="bg-white p-6 shadow-lg overflow-x-auto">
+      {/* Table of Existing Entries */}
+      <div className="bg-white p-6 shadow-lg overflow-x-auto mt-6">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b">
