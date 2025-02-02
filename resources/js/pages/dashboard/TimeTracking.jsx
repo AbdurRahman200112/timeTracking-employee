@@ -77,7 +77,7 @@ export function TimeTracking() {
   };
 
   // --------------------------------------------------------------------
-  // 3. Start => calls geolocation, reverse-geocode, posts to /start
+  // 3. Start => calls geolocation, reverse-geocode, stores start time in localStorage
   // --------------------------------------------------------------------
   const handleStartWithGeo = () => {
     navigator.geolocation.getCurrentPosition(
@@ -115,22 +115,11 @@ export function TimeTracking() {
         // Format local time => "HH:MM:SS"
         const startTimeString = getCurrentTimeString();
 
-        // Post to /api/time-tracking/start
-        try {
-          await axios.post(
-            "/api/time-tracking/start",
-            {
-              start_time: startTimeString,
-              latitude,
-              longitude,
-              location: determinedCity,
-            },
-            { withCredentials: true }
-          );
-          console.log("Timer started in DB successfully.");
-        } catch (err) {
-          console.error("Error starting timer in DB:", err);
-        }
+        // Store start time in localStorage
+        localStorage.setItem("startTime", startTimeString);
+        localStorage.setItem("location", determinedCity);
+        localStorage.setItem("latitude", latitude);
+        localStorage.setItem("longitude", longitude);
 
         // Start Redux timer
         dispatch(startTimer());
@@ -167,19 +156,42 @@ export function TimeTracking() {
   };
 
   // --------------------------------------------------------------------
-  // 6. Stop => sets end_time in DB
+  // 6. Stop => sends start and end time to backend
   // --------------------------------------------------------------------
   const handleStop = async () => {
     const endTimeString = getCurrentTimeString();
+
+    // Retrieve start time and location from localStorage
+    const startTimeString = localStorage.getItem("startTime");
+    const location = localStorage.getItem("location");
+    const latitude = localStorage.getItem("latitude");
+    const longitude = localStorage.getItem("longitude");
+
+    if (!startTimeString) {
+      console.error("No start time found in localStorage.");
+      return;
+    }
 
     try {
       // POST to /api/time-tracking/stop
       await axios.post(
         "/api/time-tracking/stop",
-        { end_time: endTimeString },
+        {
+          start_time: startTimeString,
+          end_time: endTimeString,
+          latitude,
+          longitude,
+          location,
+        },
         { withCredentials: true }
       );
-      console.log("Timer stopped in DB successfully.");
+      console.log("Timer stopped and data saved to DB successfully.");
+
+      // Clear localStorage
+      localStorage.removeItem("startTime");
+      localStorage.removeItem("location");
+      localStorage.removeItem("latitude");
+      localStorage.removeItem("longitude");
     } catch (err) {
       console.error("Error stopping timer in DB:", err);
     }
@@ -189,7 +201,13 @@ export function TimeTracking() {
     clearTimerInterval();
     setIsPaused(false);
   };
-
+  const formatTime = (timeStr) => {
+    if (!timeStr) return ''; // Handle empty values
+    const [hour, minute] = timeStr.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12; // Convert 0 to 12
+    return `${formattedHour}:${minute.toString().padStart(2, '0')} ${period}`;
+  };
   // --------------------------------------------------------------------
   // Render
   // --------------------------------------------------------------------
@@ -270,7 +288,6 @@ export function TimeTracking() {
             <thead>
               <tr className="border-b bg-gray-100">
                 <th className="px-4">Date</th>
-                <th className="px-4">Employee</th>
                 <th className="px-4">Start</th>
                 <th className="px-4">End</th>
                 <th className="px-4">Location</th>
@@ -280,9 +297,9 @@ export function TimeTracking() {
               {timeEntries.map((entry) => (
                 <tr key={entry.id} className="border-b">
                   <td className="px-4">{entry.entry_date}</td>
-                  <td className="px-4">{entry.employee_id}</td>
                   <td className="px-4">{entry.start_time}</td>
-                  <td className="px-4">{entry.end_time || "--:--:--"}</td>
+
+            <td className="px-4">{entry.end_time || "--:--:--"}</td>
                   <td className="px-4">{entry.location || "N/A"}</td>
                 </tr>
               ))}

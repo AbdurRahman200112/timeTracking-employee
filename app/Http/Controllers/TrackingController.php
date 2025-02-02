@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // Import the Log facade
+use Illuminate\Support\Facades\Validator;
 
 class TrackingController extends Controller
 {
@@ -107,40 +108,44 @@ class TrackingController extends Controller
     /**
      * POST: Stop the timer.
      */
-    public function stop(Request $request)
-    {
-        // Retrieve employee_id from session
-        $employee_id = session('user_id');
-        if (!$employee_id) {
-            return response()->json(['message' => 'Unauthorized access.'], 403);
-        }
 
-        // Validate required field from the client
-        $validated = $request->validate([
-            'end_time' => 'required|date_format:H:i:s',
-        ]);
-
-        // Find the most recent row for this employee that doesn't have an end_time
-        $latestEntry = DB::table('time_tracking')
-            ->where('employee_id', $employee_id)
-            ->whereNull('end_time')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if (!$latestEntry) {
-            return response()->json([
-                'message' => 'No active timer found for this user.',
-            ], 404);
-        }
-
-        // Update the record with end_time
-        DB::table('time_tracking')
-            ->where('id', $latestEntry->id)
-            ->update([
-                'end_time'   => $validated['end_time'],
-                'updated_at' => now(),
-            ]);
-
-        return response()->json(['message' => 'Timer stopped successfully'], 200);
-    }
+     public function stop(Request $request)
+     {
+         // Log the request input
+         Log::info('Received stop timer request', $request->all());
+     
+         // Retrieve employee_id from session
+         $employee_id = session('user_id');
+         if (!$employee_id) {
+             Log::warning('Unauthorized access: No user_id in session.');
+             return response()->json(['message' => 'Unauthorized access.'], 403);
+         }
+     
+         try {
+             // Insert into time_tracking without validation
+             $inserted = DB::table('time_tracking')->insert([
+                 'employee_id'     => $employee_id,
+                 'organization_id' => 6, // Hardcoded for now
+                 'entry_date'      => now()->format('Y-m-d'),
+                 'start_time'  => $request->input('start_time'),
+                 'end_time'        => $request->input('end_time'),
+                 'latitude'        => $request->input('latitude'),
+                 'longitude'       => $request->input('longitude'),
+                 'location'        => $request->input('location'),
+                 'created_at'      => now(),
+                 'updated_at'      => now(),
+             ]);
+     
+             if ($inserted) {
+                 Log::info('Timer data saved successfully', ['employee_id' => $employee_id]);
+                 return response()->json(['message' => 'Timer stopped and data saved successfully'], 200);
+             } else {
+                 Log::error('Database insert failed');
+                 return response()->json(['message' => 'Failed to save timer data.'], 500);
+             }
+         } catch (\Exception $e) {
+             Log::error('Exception occurred while inserting data', ['error' => $e->getMessage()]);
+             return response()->json(['message' => 'An error occurred while saving data.'], 500);
+         }
+     }
 }

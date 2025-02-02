@@ -1,11 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 /**
- * Helper: Computes elapsed hours, minutes, seconds given a start time in ms.
+ * Computes elapsed hours, minutes, and seconds given a start time in milliseconds.
  */
 const getElapsedTime = (startTime) => {
+  if (!startTime) return { hours: 0, minutes: 0, seconds: 0 };
+
   const now = Date.now();
   const elapsedSeconds = Math.floor((now - startTime) / 1000);
+
   return {
     hours: Math.floor(elapsedSeconds / 3600),
     minutes: Math.floor((elapsedSeconds % 3600) / 60),
@@ -13,20 +16,37 @@ const getElapsedTime = (startTime) => {
   };
 };
 
-// Check localStorage for a saved startTime
+/**
+ * Converts a timestamp (in milliseconds) into a MySQL TIME format (HH:MM:SS)
+ */
+const formatTimeForMySQL = (timestamp) => {
+  const date = new Date(timestamp);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+};
+
+/**
+ * Converts MySQL TIME format (HH:MM:SS) to milliseconds timestamp
+ */
+const parseTimeToMilliseconds = (time) => {
+  if (!time) return null;
+  const [hours, minutes, seconds] = time.split(":").map(Number);
+  const now = new Date();
+  now.setHours(hours, minutes, seconds, 0); // Set time using local hours
+  return now.getTime();
+};
+
+// Retrieve startTime from localStorage (if available) and convert it into milliseconds
 const savedStartTime = localStorage.getItem("startTime")
-  ? parseInt(localStorage.getItem("startTime"), 10)
+  ? parseTimeToMilliseconds(localStorage.getItem("startTime"))
   : null;
 
-// If we have a saved startTime, calculate how much time has passed
-const savedElapsedTime = savedStartTime
-  ? getElapsedTime(savedStartTime)
-  : { hours: 0, minutes: 0, seconds: 0 };
-
 const initialState = {
-  isRunning: false,
-  startTime: savedStartTime,      // e.g. 1682580112345
-  elapsedTime: savedElapsedTime,  // e.g. { hours: 0, minutes: 10, seconds: 55 }
+  isRunning: !!savedStartTime, // Running if startTime exists
+  startTime: savedStartTime, // Stored timestamp
+  elapsedTime: getElapsedTime(savedStartTime), // Compute elapsed time dynamically
 };
 
 const timerSlice = createSlice({
@@ -34,51 +54,30 @@ const timerSlice = createSlice({
   initialState,
   reducers: {
     startTimer: (state) => {
-      // Mark the timer as running but DO NOT reset elapsedTime
-      state.isRunning = true;
-    },
-    pauseTimer: (state) => {
-      // Temporarily stop incrementing time, but keep the current elapsedTime
-      state.isRunning = false;
-    },
-    stopTimer: (state) => {
-      // Fully reset
-      state.isRunning = false;
-      state.elapsedTime = { hours: 0, minutes: 0, seconds: 0 };
-      state.startTime = null;
-      localStorage.removeItem("startTime"); // Clear from localStorage as well
-    },
-    updateTime: (state) => {
-      // Increment the elapsed time by 1 second if running
-      if (state.isRunning) {
-        let { hours, minutes, seconds } = state.elapsedTime;
-        seconds++;
-        if (seconds >= 60) {
-          seconds = 0;
-          minutes++;
-          if (minutes >= 60) {
-            minutes = 0;
-            hours++;
-          }
-        }
-        state.elapsedTime = { hours, minutes, seconds };
+      if (!state.isRunning) {
+        const newStartTime = Date.now();
+        state.isRunning = true;
+        state.startTime = newStartTime;
+        localStorage.setItem("startTime", formatTimeForMySQL(newStartTime));
       }
     },
-
-    setStartTime: (state, action) => {
-      const newStartTime = action.payload || Date.now();
-      state.startTime = newStartTime;
-      localStorage.setItem("startTime", newStartTime.toString());
+    pauseTimer: (state) => {
+      state.isRunning = false;
+      localStorage.setItem("startTime", formatTimeForMySQL(state.startTime));
+    },
+    stopTimer: (state) => {
+      state.isRunning = false;
+      state.startTime = null;
+      state.elapsedTime = { hours: 0, minutes: 0, seconds: 0 };
+      localStorage.removeItem("startTime");
+    },
+    updateTime: (state) => {
+      if (state.isRunning && state.startTime) {
+        state.elapsedTime = getElapsedTime(state.startTime);
+      }
     },
   },
 });
 
-export const {
-  startTimer,
-  pauseTimer,
-  stopTimer,
-  updateTime,
-  setStartTime,
-} = timerSlice.actions;
-
+export const { startTimer, pauseTimer, stopTimer, updateTime } = timerSlice.actions;
 export default timerSlice.reducer;
