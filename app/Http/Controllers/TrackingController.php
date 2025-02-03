@@ -20,6 +20,7 @@ class TrackingController extends Controller
                 'employees.email',
                 'employees.employment_type',
                 'time_tracking.entry_date',
+                'time_tracking.break_duration',
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
@@ -122,16 +123,18 @@ class TrackingController extends Controller
          }
      
          try {
-             // Insert into time_tracking without validation
+             // Insert into time_tracking
              $inserted = DB::table('time_tracking')->insert([
                  'employee_id'     => $employee_id,
                  'organization_id' => 6, // Hardcoded for now
                  'entry_date'      => now()->format('Y-m-d'),
-                 'start_time'  => $request->input('start_time'),
+                 'start_time'      => $request->input('start_time'),
                  'end_time'        => $request->input('end_time'),
                  'latitude'        => $request->input('latitude'),
                  'longitude'       => $request->input('longitude'),
                  'location'        => $request->input('location'),
+                 // New column for break duration:
+                 'break_duration'  => $request->input('break_duration'), // e.g. "00:00:05"
                  'created_at'      => now(),
                  'updated_at'      => now(),
              ]);
@@ -148,4 +151,5 @@ class TrackingController extends Controller
              return response()->json(['message' => 'An error occurred while saving data.'], 500);
          }
      }
+     
 }

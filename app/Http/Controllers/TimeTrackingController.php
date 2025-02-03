@@ -9,48 +9,32 @@ use Dompdf\Dompdf; // For PDF export
 use Dompdf\Options;
 
 class TimeTrackingController extends Controller
-{
-    public function index()
+{public function index()
     {
-        // Retrieve the organization_id from the session
-        $organizationId = session('user_id'); // Ensure 'user_id' is correctly set in session
+        // Retrieve the user/employee ID from the session
+        $employeeId = session('user_id');
         
-        if (!$organizationId) {
+        if (!$employeeId) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
     
-        // Fetch time tracking data along with employee and overtime rules
         $timeTrackingData = DB::table('time_tracking')
             ->join('employees', 'time_tracking.employee_id', '=', 'employees.id')
-            ->leftJoin('overtime_rules', 'employees.id', '=', 'overtime_rules.employee_id')
-            ->where('employees.id', $organizationId) // Fetch only data for this session's user ID
+            ->where('employees.id', $employeeId)
             ->select(
-                'employees.id as employee_id',
-                'employees.name as employee_name',
-                'employees.email',
-                'employees.employment_type',
-                'employees.designation',
-                'employees.break_duration',
+                'time_tracking.break_duration',
                 'time_tracking.entry_date',
                 'time_tracking.start_time',
                 'time_tracking.end_time',
                 'time_tracking.working_hours',
-                'time_tracking.location',
-                'overtime_rules.monthly_overtime_start',
-                'overtime_rules.monthly_rate',
-                'overtime_rules.weekly_overtime_start',
-                'overtime_rules.weekly_rate',
-                'overtime_rules.daily_start_time',
-                'overtime_rules.daily_rate',
-                'overtime_rules.early_start_time',
-                'overtime_rules.early_start_rate',
-                'overtime_rules.saturday_rate',
-                'overtime_rules.saturday_is_working_day'
+                'time_tracking.location'
             )
+            ->orderBy('time_tracking.id', 'desc')
             ->get();
     
         return response()->json($timeTrackingData, 200);
     }
+    
     
     public function countByEmploymentType()
     {

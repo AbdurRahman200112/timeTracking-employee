@@ -1,79 +1,98 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 /**
- * Computes elapsed hours, minutes, and seconds given a start time in milliseconds.
+ * Converts total milliseconds into { hours, minutes, seconds }.
  */
-const getElapsedTime = (startTime) => {
-  if (!startTime) return { hours: 0, minutes: 0, seconds: 0 };
+const msToHMS = (ms) => {
+  if (!ms || ms < 0) return { hours: 0, minutes: 0, seconds: 0 };
 
-  const now = Date.now();
-  const elapsedSeconds = Math.floor((now - startTime) / 1000);
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-  return {
-    hours: Math.floor(elapsedSeconds / 3600),
-    minutes: Math.floor((elapsedSeconds % 3600) / 60),
-    seconds: elapsedSeconds % 60,
-  };
+  return { hours, minutes, seconds };
 };
 
 /**
- * Converts a timestamp (in milliseconds) into a MySQL TIME format (HH:MM:SS)
+ * Safely parse an integer from localStorage.
  */
-const formatTimeForMySQL = (timestamp) => {
-  const date = new Date(timestamp);
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-  return `${hours}:${minutes}:${seconds}`;
+const parseIntSafe = (val, defaultVal = 0) => {
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? defaultVal : parsed;
 };
 
-/**
- * Converts MySQL TIME format (HH:MM:SS) to milliseconds timestamp
- */
-const parseTimeToMilliseconds = (time) => {
-  if (!time) return null;
-  const [hours, minutes, seconds] = time.split(":").map(Number);
-  const now = new Date();
-  now.setHours(hours, minutes, seconds, 0); // Set time using local hours
-  return now.getTime();
-};
+// Retrieve any saved data from localStorage
+const savedStartTimeMs = parseIntSafe(localStorage.getItem("startTimeMs"), null);
+const savedAccumulatedMs = parseIntSafe(localStorage.getItem("accumulatedMs"), 0);
 
-// Retrieve startTime from localStorage (if available) and convert it into milliseconds
-const savedStartTime = localStorage.getItem("startTime")
-  ? parseTimeToMilliseconds(localStorage.getItem("startTime"))
-  : null;
+// Determine if we consider ourselves 'running':
+// We only consider running if there's a `savedStartTimeMs`.
+const isTimerRunning = savedStartTimeMs !== null;
 
+// Compute the current "elapsed" if the timer is running
+let initialElapsedMs = savedAccumulatedMs;
+if (isTimerRunning) {
+  initialElapsedMs += Date.now() - savedStartTimeMs; 
+}
+
+// Build your initial state
 const initialState = {
-  isRunning: !!savedStartTime, // Running if startTime exists
-  startTime: savedStartTime, // Stored timestamp
-  elapsedTime: getElapsedTime(savedStartTime), // Compute elapsed time dynamically
+  isRunning: isTimerRunning,
+  startTime: isTimerRunning ? savedStartTimeMs : null,
+  accumulatedMs: isTimerRunning ? savedAccumulatedMs : 0,
+  elapsedTime: msToHMS(initialElapsedMs), // { hours, minutes, seconds }
 };
 
-const timerSlice = createSlice({
+export const timerSlice = createSlice({
   name: "timer",
   initialState,
   reducers: {
     startTimer: (state) => {
+      // "Start" also acts like "Resume". If it’s already running, do nothing.
       if (!state.isRunning) {
-        const newStartTime = Date.now();
         state.isRunning = true;
-        state.startTime = newStartTime;
-        localStorage.setItem("startTime", formatTimeForMySQL(newStartTime));
+        // Mark a new "startTime" from now
+        state.startTime = Date.now();
+        // Save to localStorage
+        localStorage.setItem("startTimeMs", state.startTime.toString());
+        localStorage.setItem("accumulatedMs", state.accumulatedMs.toString());
       }
     },
     pauseTimer: (state) => {
-      state.isRunning = false;
-      localStorage.setItem("startTime", formatTimeForMySQL(state.startTime));
+      if (state.isRunning && state.startTime) {
+        // Add whatever time has passed to the accumulated total
+        const now = Date.now();
+        const delta = now - state.startTime; // ms since last start/resume
+        state.accumulatedMs += delta;
+
+        // Update localStorage for accumulated
+        localStorage.setItem("accumulatedMs", state.accumulatedMs.toString());
+
+        // Stop timer
+        state.isRunning = false;
+        state.startTime = null;
+        localStorage.removeItem("startTimeMs"); // no longer actively running
+      }
     },
     stopTimer: (state) => {
+      // Reset everything
       state.isRunning = false;
       state.startTime = null;
+      state.accumulatedMs = 0;
       state.elapsedTime = { hours: 0, minutes: 0, seconds: 0 };
-      localStorage.removeItem("startTime");
+
+      localStorage.removeItem("startTimeMs");
+      localStorage.removeItem("accumulatedMs");
     },
     updateTime: (state) => {
       if (state.isRunning && state.startTime) {
-        state.elapsedTime = getElapsedTime(state.startTime);
+        const now = Date.now();
+        const totalMs = state.accumulatedMs + (now - state.startTime);
+        state.elapsedTime = msToHMS(totalMs);
+      } else {
+        // If not running, use only the accumulated time
+        state.elapsedTime = msToHMS(state.accumulatedMs);
       }
     },
   },

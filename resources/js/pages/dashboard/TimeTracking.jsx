@@ -17,7 +17,7 @@ export function TimeTracking() {
   // Distinguish between paused vs. fully stopped
   const [isPaused, setIsPaused] = useState(false);
 
-  // Interval for the timer
+  // Interval for the main working timer
   const intervalRef = useRef(null);
 
   // Table data from backend
@@ -36,7 +36,7 @@ export function TimeTracking() {
   }, [isRunning]);
 
   // --------------------------------------------------------------------
-  // 2. Fetch existing time entries from DB
+  // 2. Fetch existing time entries from DB (example)
   // --------------------------------------------------------------------
   useEffect(() => {
     const fetchTimeTrackingData = async () => {
@@ -115,11 +115,16 @@ export function TimeTracking() {
         // Format local time => "HH:MM:SS"
         const startTimeString = getCurrentTimeString();
 
-        // Store start time in localStorage
+        // Store start time & location info in localStorage
         localStorage.setItem("startTime", startTimeString);
         localStorage.setItem("location", determinedCity);
         localStorage.setItem("latitude", latitude);
         localStorage.setItem("longitude", longitude);
+
+        // IMPORTANT: Initialize break data in localStorage
+        // This will keep track of the sum of all breaks in seconds
+        localStorage.setItem("breakDurationInSeconds", "0");
+        // And if user is about to pause now, we store breakStartTime then
 
         // Start Redux timer
         dispatch(startTimer());
@@ -138,39 +143,83 @@ export function TimeTracking() {
   };
 
   // --------------------------------------------------------------------
-  // 4. Pause (just stops local timer, no DB call)
+  // 4. Pause => mark break start, stop local timer
   // --------------------------------------------------------------------
   const handlePause = () => {
     dispatch(pauseTimer());
     clearTimerInterval();
     setIsPaused(true);
+
+    // Record break start time in localStorage
+    const now = new Date();
+    localStorage.setItem("breakStartTime", now.toISOString());
   };
 
   // --------------------------------------------------------------------
-  // 5. Resume (just resumes local timer, no DB call)
+  // 5. Resume => compute how long the break was, add to total, resume
   // --------------------------------------------------------------------
   const handleResume = () => {
+    // If there's a breakStartTime, let's compute how long user was paused
+    const breakStart = localStorage.getItem("breakStartTime");
+    if (breakStart) {
+      const breakStartDate = new Date(breakStart);
+      const now = new Date();
+      const breakSeconds = Math.floor((now - breakStartDate) / 1000);
+
+      // Add breakSeconds to total
+      const oldBreakTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+      const newBreakTotal = oldBreakTotal + breakSeconds;
+      localStorage.setItem("breakDurationInSeconds", newBreakTotal.toString());
+
+      // Clear the breakStartTime
+      localStorage.removeItem("breakStartTime");
+    }
+
+    // Resume the main timer
     dispatch(startTimer());
     startTimerInterval();
     setIsPaused(false);
   };
 
   // --------------------------------------------------------------------
-  // 6. Stop => sends start and end time to backend
+  // 6. Stop => sends start/end time, break duration, etc. to backend
   // --------------------------------------------------------------------
   const handleStop = async () => {
     const endTimeString = getCurrentTimeString();
 
-    // Retrieve start time and location from localStorage
+    // Retrieve start time & location info from localStorage
     const startTimeString = localStorage.getItem("startTime");
     const location = localStorage.getItem("location");
     const latitude = localStorage.getItem("latitude");
     const longitude = localStorage.getItem("longitude");
 
+    // Before finalizing, if the user is currently paused,
+    // we finalize the break up to this stop time.
+    const breakStart = localStorage.getItem("breakStartTime");
+    if (breakStart) {
+      const breakStartDate = new Date(breakStart);
+      const now = new Date();
+      const breakSeconds = Math.floor((now - breakStartDate) / 1000);
+
+      // Add breakSeconds to total
+      const oldBreakTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+      const newBreakTotal = oldBreakTotal + breakSeconds;
+      localStorage.setItem("breakDurationInSeconds", newBreakTotal.toString());
+
+      // Clear the breakStartTime
+      localStorage.removeItem("breakStartTime");
+    }
+
+    // Read final breakDurationInSeconds
+    const breakSecondsTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+
     if (!startTimeString) {
       console.error("No start time found in localStorage.");
       return;
     }
+
+    // Convert breakSecondsTotal to HH:MM:SS format
+    const breakDurationString = secondsToHHMMSS(breakSecondsTotal);
 
     try {
       // POST to /api/time-tracking/stop
@@ -182,6 +231,7 @@ export function TimeTracking() {
           latitude,
           longitude,
           location,
+          break_duration: breakDurationString, // <--- new field
         },
         { withCredentials: true }
       );
@@ -192,6 +242,8 @@ export function TimeTracking() {
       localStorage.removeItem("location");
       localStorage.removeItem("latitude");
       localStorage.removeItem("longitude");
+      localStorage.removeItem("breakDurationInSeconds");
+      localStorage.removeItem("breakStartTime");
     } catch (err) {
       console.error("Error stopping timer in DB:", err);
     }
@@ -201,13 +253,30 @@ export function TimeTracking() {
     clearTimerInterval();
     setIsPaused(false);
   };
-  const formatTime = (timeStr) => {
-    if (!timeStr) return ''; // Handle empty values
-    const [hour, minute] = timeStr.split(':').map(Number);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const formattedHour = hour % 12 || 12; // Convert 0 to 12
-    return `${formattedHour}:${minute.toString().padStart(2, '0')} ${period}`;
+
+  // Utility: convert total break seconds to HH:MM:SS
+  const secondsToHHMMSS = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return (
+      String(hours).padStart(2, "0") +
+      ":" +
+      String(minutes).padStart(2, "0") +
+      ":" +
+      String(seconds).padStart(2, "0")
+    );
   };
+
+  // Helper for table – format 24-hour time to AM/PM if needed
+  const formatTime = (timeStr) => {
+    if (!timeStr) return ""; // Handle empty values
+    const [hour, minute] = timeStr.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    const formattedHour = hour % 12 || 12; // Convert 0 to 12
+    return `${formattedHour}:${minute.toString().padStart(2, "0")} ${period}`;
+  };
+
   // --------------------------------------------------------------------
   // Render
   // --------------------------------------------------------------------
@@ -235,8 +304,9 @@ export function TimeTracking() {
                   handleStop();
                 }
               }}
-              className={`${!isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
-                } w-64 py-3 text-white rounded-full text-lg`}
+              className={`${
+                !isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
+              } w-64 py-3 text-white rounded-full text-lg`}
             >
               {!isRunning && !isPaused ? "Start" : "Stop"}
             </Button>
@@ -266,7 +336,7 @@ export function TimeTracking() {
             {String(elapsedTime.seconds).padStart(2, "0")}
           </div>
 
-          {/* Over Time Example */}
+          {/* Over Time Example (placeholder) */}
           <div className="text-center">
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-lg">
               Over Time
@@ -274,7 +344,7 @@ export function TimeTracking() {
             <p className="text-red-500 font-bold">01h:30min</p>
           </div>
 
-          {/* Date Example */}
+          {/* Date Example (placeholder) */}
           <div className="text-center bg-orange-500 text-white px-6 py-4 rounded-lg text-lg">
             <h3 className="text-xl font-bold">04</h3>
             <p>September</p>
@@ -286,23 +356,72 @@ export function TimeTracking() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b bg-gray-100">
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">#</th> {/* Serial Number Column */}
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Date</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Start</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">End</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Location</th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  #
+                </th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  Date
+                </th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  Start
+                </th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  End
+                </th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  Location
+                </th>
+                <th style={{ fontFamily: "Poppins" }} className="px-6 py-3">
+                  Break
+                </th>
               </tr>
             </thead>
             <tbody>
               {timeEntries
-                .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)) // Sort data in descending order
+                .sort(
+                  (a, b) => new Date(b.entry_date) - new Date(a.entry_date)
+                ) // Sort data in descending order
                 .map((entry, index) => (
-                  <tr key={entry.id} className="border-b hover:bg-gray-50"> {/* Add hover effect */}
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{index + 1}</td> {/* Serial Number */}
-                    <td  style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.entry_date}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.start_time}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.end_time || "--:--:--"}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.location || "N/A"}</td>
+                  <tr
+                    key={entry.id}
+                    className="border-b hover:bg-gray-50"
+                  >
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {index + 1}
+                    </td>
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {entry.entry_date}
+                    </td>
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {entry.start_time}
+                    </td>
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {entry.end_time || "--:--:--"}
+                    </td>
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {entry.location || "N/A"}
+                    </td>
+                    <td
+                      style={{ fontFamily: "Poppins" }}
+                      className="px-6 py-4"
+                    >
+                      {entry.break_duration || "00:00:00"}
+                    </td>
                   </tr>
                 ))}
             </tbody>
