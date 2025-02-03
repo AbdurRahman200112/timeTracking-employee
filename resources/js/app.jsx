@@ -13,7 +13,7 @@ function App() {
 
       <Routes>
         <Route
-          path="/*"
+          path="/employee*"
           element={
             <ProtectedRoute>
               <Dashboard />

@@ -86,6 +86,7 @@ Route::middleware('web')->group(function () {
 
 // POST to stop the timer (update row w/ end_time)
 Route::post('/time-tracking/stop', [TrackingController::class, 'stop']);
+Route::get('/time-tracking/latest-location', [TrackingController::class, 'getLatestLocation']);
 
 });
 

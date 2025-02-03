@@ -9,7 +9,14 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet"; // Import Leaflet for custom markers
 import "leaflet/dist/leaflet.css";
 import { Button } from "@material-tailwind/react";
 import { FaClock, FaPauseCircle, FaPlayCircle } from "react-icons/fa";
@@ -22,6 +29,12 @@ import {
   stopTimer,
 } from "../../redux/timeSlice";
 
+// Import Leaflet marker icons using ES modules
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+// Register ChartJS components
 ChartJS.register(
   BarElement,
   CategoryScale,
@@ -31,47 +44,73 @@ ChartJS.register(
   Legend
 );
 
+// Fix for default marker icons in Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+// Component to update map view to marker's position
+function MapViewUpdater({ latitude, longitude }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (latitude && longitude) {
+      map.setView([latitude, longitude], 13); // Set map view to marker's position
+    }
+  }, [latitude, longitude, map]);
+
+  return null;
+}
+
 export function Home() {
-  const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [currentDate, setCurrentDate] = useState({ day: "", month: "" });
   const [isPaused, setIsPaused] = useState(false);
   const [cityName, setCityName] = useState("");
+  const [latestLocation, setLatestLocation] = useState(null); // State for latest location
   const intervalRef = useRef(null);
   const dispatch = useDispatch();
   const { elapsedTime, isRunning } = useSelector((state) => state.timer);
-  // const {workHoursData, setWWorkHoursData} = useState("");
-  // Distinguish between paused vs. fully stopped
+
+  // Entries from the backend
   const [timeEntries, setTimeEntries] = useState([]);
 
-  // Interval for the timer
+  // ----------------- PAGINATION STATES -----------------
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 5; // Show 5 entries per page
 
-  // Table data from backend
+  // ----------------- Fetch location on mount -----------------
+  useEffect(() => {
+    const fetchLatestLocation = async () => {
+      try {
+        const response = await axios.get("/api/time-tracking/latest-location", {
+          withCredentials: true,
+        });
+        setLatestLocation(response.data);
+      } catch (error) {
+        console.error("Error fetching latest location:", error);
+      }
+    };
 
-  // Reverse-geocoded city name
+    fetchLatestLocation();
+  }, []);
 
+  // ----------------- Set current date -----------------
   useEffect(() => {
     const today = new Date();
     const day = String(today.getDate()).padStart(2, "0"); // Ensure two-digit format
     const month = today.toLocaleString("default", { month: "long" }); // Get full month name
-
     setCurrentDate({ day, month });
   }, []);
 
-  // Helper: format time as HH:MM:SS (24-hour)
-  useEffect(() => {
-    if (isRunning) {
-      startTimerInterval();
-    }
-  }, [isRunning]);
-
-  // --------------------------------------------------------------------
-  // 2. Fetch existing time entries from DB
-  // --------------------------------------------------------------------
+  // ----------------- Fetch time entries from the backend -----------------
   useEffect(() => {
     const fetchTimeTrackingData = async () => {
       try {
         const response = await axios.get("/api/time-tracking", {
-          withCredentials: true, // Make sure cookies/sessions are sent
+          withCredentials: true,
         });
         setTimeEntries(response.data);
       } catch (error) {
@@ -81,32 +120,7 @@ export function Home() {
     fetchTimeTrackingData();
   }, []);
 
-  // --------------------------------------------------------------------
-  // 3. Set up Server-Sent Events (SSE) for real-time updates
-  // --------------------------------------------------------------------
-  useEffect(() => {
-    const eventSource = new EventSource("/api/time-tracking/updates", {
-      withCredentials: true,
-    });
-
-    eventSource.onmessage = (event) => {
-      const newEntry = JSON.parse(event.data);
-      setTimeEntries((prevEntries) => [newEntry, ...prevEntries]); // Add new entry to the top
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close(); // Cleanup on unmount
-    };
-  }, []);
-
-  // --------------------------------------------------------------------
-  // Timer logic
-  // --------------------------------------------------------------------
+  // ----------------- Timer logic -----------------
   const startTimerInterval = () => {
     if (!intervalRef.current) {
       intervalRef.current = setInterval(() => {
@@ -121,16 +135,30 @@ export function Home() {
       intervalRef.current = null;
     }
   };
+  const calculateOvertime = () => {
+    const standardWorkingHours = 8 * 3600; // 8 hours in seconds
+    const totalWorkingSeconds =
+      elapsedTime.hours * 3600 +
+      elapsedTime.minutes * 60 +
+      elapsedTime.seconds;
 
+    const overtimeSeconds = totalWorkingSeconds - standardWorkingHours;
+
+    if (overtimeSeconds > 0) {
+      const overtimeHours = Math.floor(overtimeSeconds / 3600);
+      const overtimeMinutes = Math.floor((overtimeSeconds % 3600) / 60);
+      return `${overtimeHours}h:${overtimeMinutes}m`;
+    } else {
+      return "00h:00m";
+    }
+  };
   // Helper: format time as HH:MM:SS (24-hour)
   const getCurrentTimeString = () => {
     const now = new Date();
     return now.toLocaleTimeString("en-GB", { hour12: false }); // e.g. "08:30:00"
   };
 
-  // --------------------------------------------------------------------
-  // 4. Start => calls geolocation, reverse-geocode, stores start time in localStorage
-  // --------------------------------------------------------------------
+  // ----------------- Start timer with geolocation -----------------
   const handleStartWithGeo = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -173,6 +201,9 @@ export function Home() {
         localStorage.setItem("latitude", latitude);
         localStorage.setItem("longitude", longitude);
 
+        // Initialize break data in localStorage
+        localStorage.setItem("breakDurationInSeconds", "0");
+
         // Start Redux timer
         dispatch(startTimer());
         startTimerInterval();
@@ -189,27 +220,44 @@ export function Home() {
     );
   };
 
-  // --------------------------------------------------------------------
-  // 5. Pause (just stops local timer, no DB call)
-  // --------------------------------------------------------------------
+  // ----------------- Pause timer -----------------
   const handlePause = () => {
     dispatch(pauseTimer());
     clearTimerInterval();
     setIsPaused(true);
+
+    // Record break start time in localStorage
+    const now = new Date();
+    localStorage.setItem("breakStartTime", now.toISOString());
   };
 
-  // --------------------------------------------------------------------
-  // 6. Resume (just resumes local timer, no DB call)
-  // --------------------------------------------------------------------
+  // ----------------- Resume timer -----------------
   const handleResume = () => {
+    const breakStart = localStorage.getItem("breakStartTime");
+    if (breakStart) {
+      const breakStartDate = new Date(breakStart);
+      const now = new Date();
+      const breakSeconds = Math.floor((now - breakStartDate) / 1000);
+
+      const oldBreakTotal = parseInt(
+        localStorage.getItem("breakDurationInSeconds") || "0",
+        10
+      );
+      const newBreakTotal = oldBreakTotal + breakSeconds;
+      localStorage.setItem(
+        "breakDurationInSeconds",
+        newBreakTotal.toString()
+      );
+
+      localStorage.removeItem("breakStartTime");
+    }
+
     dispatch(startTimer());
     startTimerInterval();
     setIsPaused(false);
   };
 
-  // --------------------------------------------------------------------
-  // 7. Stop => sends start and end time to backend
-  // --------------------------------------------------------------------
+  // ----------------- Stop timer and send data to backend -----------------
   const handleStop = async () => {
     const endTimeString = getCurrentTimeString();
 
@@ -219,10 +267,39 @@ export function Home() {
     const latitude = localStorage.getItem("latitude");
     const longitude = localStorage.getItem("longitude");
 
+    // Finalize break duration if paused
+    const breakStart = localStorage.getItem("breakStartTime");
+    if (breakStart) {
+      const breakStartDate = new Date(breakStart);
+      const now = new Date();
+      const breakSeconds = Math.floor((now - breakStartDate) / 1000);
+
+      const oldBreakTotal = parseInt(
+        localStorage.getItem("breakDurationInSeconds") || "0",
+        10
+      );
+      const newBreakTotal = oldBreakTotal + breakSeconds;
+      localStorage.setItem(
+        "breakDurationInSeconds",
+        newBreakTotal.toString()
+      );
+
+      localStorage.removeItem("breakStartTime");
+    }
+
+    // Read final breakDurationInSeconds
+    const breakSecondsTotal = parseInt(
+      localStorage.getItem("breakDurationInSeconds") || "0",
+      10
+    );
+
     if (!startTimeString) {
       console.error("No start time found in localStorage.");
       return;
     }
+
+    // Convert breakSecondsTotal to HH:MM:SS format
+    const breakDurationString = secondsToHHMMSS(breakSecondsTotal);
 
     try {
       // POST to /api/time-tracking/stop
@@ -234,6 +311,7 @@ export function Home() {
           latitude,
           longitude,
           location,
+          break_duration: breakDurationString,
         },
         { withCredentials: true }
       );
@@ -244,25 +322,33 @@ export function Home() {
       localStorage.removeItem("location");
       localStorage.removeItem("latitude");
       localStorage.removeItem("longitude");
+      localStorage.removeItem("breakDurationInSeconds");
+      localStorage.removeItem("breakStartTime");
     } catch (err) {
       console.error("Error stopping timer in DB:", err);
     }
-    const workHoursData = {
-      labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-      datasets: [
-        {
-          label: "Work Hours",
-          data: [3, 5, 2, 7, 4, 6, 3],
-          backgroundColor: "#FC8C10",
-          borderRadius: 6,
-        },
-      ],
-    };
+
     // Reset Redux timer
     dispatch(stopTimer());
     clearTimerInterval();
     setIsPaused(false);
   };
+
+  // ----------------- Utility: convert total break seconds to HH:MM:SS -----------------
+  const secondsToHHMMSS = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return (
+      String(hours).padStart(2, "0") +
+      ":" +
+      String(minutes).padStart(2, "0") +
+      ":" +
+      String(seconds).padStart(2, "0")
+    );
+  };
+
+  // ----------------- WORK HOURS CHART (Dummy) -----------------
   const workHoursData = {
     labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     datasets: [
@@ -273,16 +359,35 @@ export function Home() {
         borderRadius: 6,
       },
     ],
+  };
 
-  }
+  // ----------------- PAGINATION CALCULATIONS -----------------
+  const totalPages = Math.ceil(timeEntries.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+
+  // Sort entries descending by date, then slice for the current page
+  const currentEntries = timeEntries
+    .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
+    .slice(startIndex, startIndex + entriesPerPage);
+
+  // Handle page changes
+  const handlePageClick = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // ----------------- RENDER -----------------
   return (
     <div className="p-6 bg-white min-h-screen">
       <h1 className="text-lg font-bold mb-4">Dashboard</h1>
       <div className="p-4 flex flex-col">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Work Hours Chart */}
           <div className="flex flex-col bg-white p-6 shadow-lg rounded-xl">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-semibold flex items-center" style={{ fontFamily: 'Poppins' }}>
+              <h2
+                className="font-semibold flex items-center"
+                style={{ fontFamily: "Poppins" }}
+              >
                 <div className="bg-orange-50 p-3 flex justify-center items-center rounded-full">
                   <FaClock className="text-orange-500" />
                 </div>
@@ -304,14 +409,38 @@ export function Home() {
               />
             </div>
           </div>
+
+          {/* Location Map */}
           <div className="flex flex-col bg-white p-6 shadow-lg rounded-xl">
             <h2 className="font-semibold mb-4">Location</h2>
             <div className="h-60 md:h-80">
-              <MapContainer center={[24.8607, 67.0011]} zoom={5} className="h-full w-full rounded-lg">
+              <MapContainer
+                center={
+                  latestLocation
+                    ? [latestLocation.latitude, latestLocation.longitude]
+                    : [24.8607, 67.0011] // Default center if no location
+                }
+                zoom={13}
+                className="h-full w-full rounded-lg"
+              >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <Marker position={[32.7767, -96.797]}>
-                  <Popup>Employee Location</Popup>
-                </Marker>
+
+                {latestLocation && (
+                  <>
+                    <Marker
+                      position={[
+                        latestLocation.latitude,
+                        latestLocation.longitude,
+                      ]}
+                    >
+                      <Popup>{latestLocation.location}</Popup>
+                    </Marker>
+                    <MapViewUpdater
+                      latitude={latestLocation.latitude}
+                      longitude={latestLocation.longitude}
+                    />
+                  </>
+                )}
               </MapContainer>
             </div>
           </div>
@@ -319,10 +448,7 @@ export function Home() {
       </div>
 
       {/* Timer and Buttons Section */}
-
-
-      {/* Table of Existing Entries */}
-      <div className="bg-white p-6 shadow-xl rounded-xl w-full max-w-8xl">
+      <div className="bg-white p-6 shadow-xl rounded-xl w-full max-w-8xl mt-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           {/* Start/Stop Button */}
           <div className="flex items-center space-x-4">
@@ -334,8 +460,9 @@ export function Home() {
                   handleStop();
                 }
               }}
-              className={`${!isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
-                } w-64 py-3 text-white rounded-full text-lg`}
+              className={`${
+                !isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
+              } w-64 py-3 text-white rounded-full text-lg`}
             >
               {!isRunning && !isPaused ? "Start" : "Stop"}
             </Button>
@@ -370,13 +497,13 @@ export function Home() {
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-lg">
               Over Time
             </div>
-            <p className="text-red-500 font-bold">01h:30min</p>
+            <p className="text-red-500 font-bold">{calculateOvertime()}</p>
           </div>
 
           {/* Date Example */}
           <div className="text-center bg-orange-500 text-white px-6 py-4 rounded-lg text-lg">
-            <h3 className="text-xl font-bold">04</h3>
-            <p>September</p>
+            <h3 className="text-xl font-bold">{currentDate.day}</h3>
+            <p>{currentDate.month}</p>
           </div>
         </div>
 
@@ -385,28 +512,113 @@ export function Home() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b bg-gray-100">
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">#</th> {/* Serial Number Column */}
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Date</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Start</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">End</th>
-                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Location</th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  #
+                </th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  Date
+                </th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  Start
+                </th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  End
+                </th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  Location
+                </th>
+                <th
+                  style={{ fontFamily: "Poppins" }}
+                  className="px-6 py-3"
+                >
+                  Break
+                </th>
               </tr>
             </thead>
             <tbody>
-              {timeEntries
-                .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)) // Sort data in descending order
-                .map((entry, index) => (
-                  <tr key={entry.id} className="border-b hover:bg-gray-50"> {/* Add hover effect */}
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{index + 1}</td> {/* Serial Number */}
-                    <td  style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.entry_date}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.start_time}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.end_time || "--:--:--"}</td>
-                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.location || "N/A"}</td>
-                  </tr>
-                ))}
+              {currentEntries.map((entry, index) => (
+                <tr key={entry.id} className="border-b hover:bg-gray-50">
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {/* Calculate actual row number across pages */}
+                    {(currentPage - 1) * entriesPerPage + (index + 1)}
+                  </td>
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {entry.entry_date}
+                  </td>
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {entry.start_time}
+                  </td>
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {entry.end_time || "--:--:--"}
+                  </td>
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {entry.location || "N/A"}
+                  </td>
+                  <td
+                    style={{ fontFamily: "Poppins" }}
+                    className="px-6 py-4"
+                  >
+                    {entry.break_duration || "00:00:00"}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4">
+            <ul className="flex space-x-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <li key={page}>
+                    <button
+                      onClick={() => handlePageClick(page)}
+                      className={`px-3 py-1 rounded ${
+                        page === currentPage
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-black"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

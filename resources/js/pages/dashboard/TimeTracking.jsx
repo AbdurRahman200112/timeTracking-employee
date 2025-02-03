@@ -13,6 +13,7 @@ import {
 export function TimeTracking() {
   const dispatch = useDispatch();
   const { elapsedTime, isRunning } = useSelector((state) => state.timer);
+  const [currentDate, setCurrentDate] = useState({ day: "", month: "" });
 
   // Distinguish between paused vs. fully stopped
   const [isPaused, setIsPaused] = useState(false);
@@ -23,8 +24,12 @@ export function TimeTracking() {
   // Table data from backend
   const [timeEntries, setTimeEntries] = useState([]);
 
-  // Reverse-geocoded city name
-  const [cityName, setCityName] = useState("");
+  // Reverse-geocoded full address
+  const [location, setLocation] = useState("");
+
+  // --- PAGINATION STATES ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10; // Show 10 entries per page
 
   // --------------------------------------------------------------------
   // 1. If the timer was running on mount, restart the interval
@@ -35,6 +40,13 @@ export function TimeTracking() {
     }
   }, [isRunning]);
 
+  
+  useEffect(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0"); // Ensure two-digit format
+    const month = today.toLocaleString("default", { month: "long" }); // Get full month name
+    setCurrentDate({ day, month });
+  }, []);
   // --------------------------------------------------------------------
   // 2. Fetch existing time entries from DB (example)
   // --------------------------------------------------------------------
@@ -85,46 +97,34 @@ export function TimeTracking() {
         const { latitude, longitude } = position.coords;
         console.log("Coordinates:", latitude, longitude);
 
-        // Reverse-geocode city name (optional)
-        let determinedCity = "Unknown location";
+        // Reverse-geocode full address
+        let fullAddress = "Unknown location";
         try {
           const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyC9NY_mMXuLB2oTMbZMG4vYO0Y0VqfbrlQ`;
           const geoRes = await fetch(geocodeUrl);
           const geoData = await geoRes.json();
 
           if (geoData.results && geoData.results.length > 0) {
-            let foundCity = null;
-            const comps = geoData.results[0].address_components || [];
-            for (const c of comps) {
-              if (c.types.includes("locality")) {
-                foundCity = c.long_name;
-                break;
-              }
-            }
-            if (foundCity) {
-              determinedCity = foundCity;
-            } else if (geoData.results[0].formatted_address) {
-              determinedCity = geoData.results[0].formatted_address;
-            }
+            fullAddress = geoData.results[0].formatted_address || fullAddress;
           }
         } catch (err) {
           console.error("Error reverse-geocoding:", err);
         }
-        setCityName(determinedCity);
+
+        // Set location in state
+        setLocation(fullAddress);
 
         // Format local time => "HH:MM:SS"
         const startTimeString = getCurrentTimeString();
 
         // Store start time & location info in localStorage
         localStorage.setItem("startTime", startTimeString);
-        localStorage.setItem("location", determinedCity);
+        localStorage.setItem("location", fullAddress);
         localStorage.setItem("latitude", latitude);
         localStorage.setItem("longitude", longitude);
 
-        // IMPORTANT: Initialize break data in localStorage
-        // This will keep track of the sum of all breaks in seconds
+        // Initialize break data in localStorage
         localStorage.setItem("breakDurationInSeconds", "0");
-        // And if user is about to pause now, we store breakStartTime then
 
         // Start Redux timer
         dispatch(startTimer());
@@ -159,23 +159,22 @@ export function TimeTracking() {
   // 5. Resume => compute how long the break was, add to total, resume
   // --------------------------------------------------------------------
   const handleResume = () => {
-    // If there's a breakStartTime, let's compute how long user was paused
     const breakStart = localStorage.getItem("breakStartTime");
     if (breakStart) {
       const breakStartDate = new Date(breakStart);
       const now = new Date();
       const breakSeconds = Math.floor((now - breakStartDate) / 1000);
 
-      // Add breakSeconds to total
-      const oldBreakTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+      const oldBreakTotal = parseInt(
+        localStorage.getItem("breakDurationInSeconds") || "0",
+        10
+      );
       const newBreakTotal = oldBreakTotal + breakSeconds;
       localStorage.setItem("breakDurationInSeconds", newBreakTotal.toString());
 
-      // Clear the breakStartTime
       localStorage.removeItem("breakStartTime");
     }
 
-    // Resume the main timer
     dispatch(startTimer());
     startTimerInterval();
     setIsPaused(false);
@@ -193,25 +192,28 @@ export function TimeTracking() {
     const latitude = localStorage.getItem("latitude");
     const longitude = localStorage.getItem("longitude");
 
-    // Before finalizing, if the user is currently paused,
-    // we finalize the break up to this stop time.
+    // Finalize break duration if paused
     const breakStart = localStorage.getItem("breakStartTime");
     if (breakStart) {
       const breakStartDate = new Date(breakStart);
       const now = new Date();
       const breakSeconds = Math.floor((now - breakStartDate) / 1000);
 
-      // Add breakSeconds to total
-      const oldBreakTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+      const oldBreakTotal = parseInt(
+        localStorage.getItem("breakDurationInSeconds") || "0",
+        10
+      );
       const newBreakTotal = oldBreakTotal + breakSeconds;
       localStorage.setItem("breakDurationInSeconds", newBreakTotal.toString());
 
-      // Clear the breakStartTime
       localStorage.removeItem("breakStartTime");
     }
 
     // Read final breakDurationInSeconds
-    const breakSecondsTotal = parseInt(localStorage.getItem("breakDurationInSeconds") || "0", 10);
+    const breakSecondsTotal = parseInt(
+      localStorage.getItem("breakDurationInSeconds") || "0",
+      10
+    );
 
     if (!startTimeString) {
       console.error("No start time found in localStorage.");
@@ -230,8 +232,8 @@ export function TimeTracking() {
           end_time: endTimeString,
           latitude,
           longitude,
-          location,
-          break_duration: breakDurationString, // <--- new field
+          location, // Full address stored in a single column
+          break_duration: breakDurationString,
         },
         { withCredentials: true }
       );
@@ -268,13 +270,39 @@ export function TimeTracking() {
     );
   };
 
-  // Helper for table – format 24-hour time to AM/PM if needed
-  const formatTime = (timeStr) => {
-    if (!timeStr) return ""; // Handle empty values
-    const [hour, minute] = timeStr.split(":").map(Number);
-    const period = hour >= 12 ? "PM" : "AM";
-    const formattedHour = hour % 12 || 12; // Convert 0 to 12
-    return `${formattedHour}:${minute.toString().padStart(2, "0")} ${period}`;
+  // Calculate overtime
+  const calculateOvertime = () => {
+    const standardWorkingHours = 8 * 3600; // 8 hours in seconds
+    const totalWorkingSeconds =
+      elapsedTime.hours * 3600 +
+      elapsedTime.minutes * 60 +
+      elapsedTime.seconds;
+
+    const overtimeSeconds = totalWorkingSeconds - standardWorkingHours;
+
+    if (overtimeSeconds > 0) {
+      const overtimeHours = Math.floor(overtimeSeconds / 3600);
+      const overtimeMinutes = Math.floor((overtimeSeconds % 3600) / 60);
+      return `${overtimeHours}h:${overtimeMinutes}m`;
+    } else {
+      return "00h:00m";
+    }
+  };
+
+  // --------------------------------------------------------------------
+  // PAGINATION CALCULATIONS
+  // --------------------------------------------------------------------
+  const totalPages = Math.ceil(timeEntries.length / rowsPerPage);
+
+  // Only show entries for the current page
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const currentEntries = timeEntries
+    .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
+    .slice(startIndex, startIndex + rowsPerPage);
+
+  // Handle page changes
+  const handlePageClick = (pageNumber) => {
+    setCurrentPage(pageNumber);
   };
 
   // --------------------------------------------------------------------
@@ -284,10 +312,10 @@ export function TimeTracking() {
     <div className="p-6 bg-white min-h-screen flex flex-col items-center">
       <h1 className="text-lg font-bold mb-4 text-center">Time Tracking</h1>
 
-      {cityName && (
+      {location && (
         <div className="mb-4 text-center">
           <p className="text-sm text-gray-700">
-            Current City: <span className="font-bold">{cityName}</span>
+            Location: <span className="font-bold">{location}</span>
           </p>
         </div>
       )}
@@ -336,18 +364,18 @@ export function TimeTracking() {
             {String(elapsedTime.seconds).padStart(2, "0")}
           </div>
 
-          {/* Over Time Example (placeholder) */}
+          {/* Over Time Example */}
           <div className="text-center">
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-lg">
               Over Time
             </div>
-            <p className="text-red-500 font-bold">01h:30min</p>
+            <p className="text-red-500 font-bold">{calculateOvertime()}</p>
           </div>
 
           {/* Date Example (placeholder) */}
           <div className="text-center bg-orange-500 text-white px-6 py-4 rounded-lg text-lg">
-            <h3 className="text-xl font-bold">04</h3>
-            <p>September</p>
+            <h3 className="text-xl font-bold">{currentDate.day}</h3>
+            <p>{currentDate.month}</p>
           </div>
         </div>
 
@@ -377,56 +405,55 @@ export function TimeTracking() {
               </tr>
             </thead>
             <tbody>
-              {timeEntries
-                .sort(
-                  (a, b) => new Date(b.entry_date) - new Date(a.entry_date)
-                ) // Sort data in descending order
-                .map((entry, index) => (
-                  <tr
-                    key={entry.id}
-                    className="border-b hover:bg-gray-50"
-                  >
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {index + 1}
-                    </td>
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {entry.entry_date}
-                    </td>
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {entry.start_time}
-                    </td>
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {entry.end_time || "--:--:--"}
-                    </td>
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {entry.location || "N/A"}
-                    </td>
-                    <td
-                      style={{ fontFamily: "Poppins" }}
-                      className="px-6 py-4"
-                    >
-                      {entry.break_duration || "00:00:00"}
-                    </td>
-                  </tr>
-                ))}
+              {currentEntries.map((entry, index) => (
+                <tr key={entry.id} className="border-b hover:bg-gray-50">
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {(currentPage - 1) * rowsPerPage + (index + 1)}
+                  </td>
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {entry.entry_date}
+                  </td>
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {entry.start_time}
+                  </td>
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {entry.end_time || "--:--:--"}
+                  </td>
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {entry.location || "N/A"}
+                  </td>
+                  <td style={{ fontFamily: "Poppins" }} className="px-6 py-4">
+                    {entry.break_duration || "00:00:00"}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls (only show if more than 1 page) */}
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4">
+            <ul className="flex space-x-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <li key={page}>
+                    <button
+                      onClick={() => handlePageClick(page)}
+                      className={`px-3 py-1 rounded ${
+                        page === currentPage
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-black"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

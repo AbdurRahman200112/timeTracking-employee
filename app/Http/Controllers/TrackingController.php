@@ -151,5 +151,29 @@ class TrackingController extends Controller
              return response()->json(['message' => 'An error occurred while saving data.'], 500);
          }
      }
-     
+     public function getLatestLocation()
+    {
+        // Get the employee ID from the session
+        $employeeId = session('user_id');
+
+        if (!$employeeId) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
+        // Fetch the latest location entry for the employee
+        $latestLocation = DB::table('time_tracking')
+            ->where('employee_id', $employeeId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$latestLocation) {
+            return response()->json(['message' => 'No location data found.'], 404);
+        }
+
+        return response()->json([
+            'latitude' => $latestLocation->latitude,
+            'longitude' => $latestLocation->longitude,
+            'location' => $latestLocation->location,
+        ]);
+    }
 }
