@@ -235,9 +235,8 @@ export function TimeTracking() {
                   handleStop();
                 }
               }}
-              className={`${
-                !isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
-              } w-64 py-3 text-white rounded-full text-lg`}
+              className={`${!isRunning && !isPaused ? "bg-orange-500" : "bg-red-500"
+                } w-64 py-3 text-white rounded-full text-lg`}
             >
               {!isRunning && !isPaused ? "Start" : "Stop"}
             </Button>
@@ -287,22 +286,25 @@ export function TimeTracking() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b bg-gray-100">
-                <th className="px-4">Date</th>
-                <th className="px-4">Start</th>
-                <th className="px-4">End</th>
-                <th className="px-4">Location</th>
+                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">#</th> {/* Serial Number Column */}
+                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Date</th>
+                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Start</th>
+                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">End</th>
+                <th style={{fontFamily: 'Poppins'}} className="px-6 py-3">Location</th>
               </tr>
             </thead>
             <tbody>
-              {timeEntries.map((entry) => (
-                <tr key={entry.id} className="border-b">
-                  <td className="px-4">{entry.entry_date}</td>
-                  <td className="px-4">{entry.start_time}</td>
-
-            <td className="px-4">{entry.end_time || "--:--:--"}</td>
-                  <td className="px-4">{entry.location || "N/A"}</td>
-                </tr>
-              ))}
+              {timeEntries
+                .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)) // Sort data in descending order
+                .map((entry, index) => (
+                  <tr key={entry.id} className="border-b hover:bg-gray-50"> {/* Add hover effect */}
+                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{index + 1}</td> {/* Serial Number */}
+                    <td  style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.entry_date}</td>
+                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.start_time}</td>
+                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.end_time || "--:--:--"}</td>
+                    <td style={{fontFamily: 'Poppins'}} className="px-6 py-4">{entry.location || "N/A"}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

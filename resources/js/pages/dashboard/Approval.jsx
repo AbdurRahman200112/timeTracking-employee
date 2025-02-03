@@ -115,6 +115,7 @@ export function Approval() {
             <select
               id="statusFilter"
               value={statusFilter}
+              style={{fontFamily: 'Poppins'}}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="mt-2 block w-full px-4 py-3 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg shadow-md focus:outline-none"
             >
@@ -127,12 +128,13 @@ export function Approval() {
 
           {/* Date Range Filter */}
           <div>
-            <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700">
+            <label style={{fontFamily: 'Poppins'}} htmlFor="dateFilter" className="block text-sm font-medium text-gray-700">
               Filter by Date:
             </label>
             <select
               id="dateFilter"
               value={dateFilter}
+              style={{fontFamily: 'Poppins'}}
               onChange={(e) => setDateFilter(e.target.value)}
               className="mt-2 block w-full px-4 py-3 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg shadow-md focus:outline-none"
             >
@@ -148,7 +150,7 @@ export function Approval() {
         <div className="overflow-x-auto shadow-lg rounded-lg">
           <table className="min-w-full bg-white rounded-lg">
             <thead>
-              <tr className="bg-gray-100 text-gray-600 text-left text-sm font-semibold">
+              <tr style={{fontFamily: 'Poppins'}} className="bg-gray-100 text-gray-600 text-left text-sm font-semibold">
                 <th className="px-6 py-3">Entry Date</th>
                 <th className="px-6 py-3">Start Time</th>
                 <th className="px-6 py-3">End Time</th>
@@ -159,7 +161,7 @@ export function Approval() {
             </thead>
             <tbody>
               {currentItems.map((entry, index) => (
-                <tr key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                <tr style={{fontFamily: 'Poppins'}} key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
                   <td className="px-6 py-4">{entry.entry_date}</td>
                   <td className="px-6 py-4">{entry.start_time}</td>
                   <td className="px-6 py-4">{entry.end_time}</td>

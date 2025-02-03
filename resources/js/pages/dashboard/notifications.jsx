@@ -179,9 +179,9 @@ export function Notifications() {
           <div className="space-y-6 animate-fadeInRight">
             {/* Theme Section */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Theme</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2" style={{fontFamily: 'Poppins'}}>Theme</h3>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Customize the App theme</span>
+                <span className="text-sm" style={{fontFamily: 'Poppins'}}>Customize the App theme</span>
                 <ToggleSwitch isEnabled={isDarkTheme} onToggle={() => setIsDarkTheme(!isDarkTheme)} />
               </div>
             </div>
@@ -192,7 +192,7 @@ export function Notifications() {
                 Notifications
               </h3>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-sm">Enable notifications</span>
+                <span className="text-sm" style={{fontFamily: 'Poppins'}} >Enable notifications</span>
                 <ToggleSwitch
                   isEnabled={isNotificationsEnabled}
                   onToggle={() => setIsNotificationsEnabled(!isNotificationsEnabled)}

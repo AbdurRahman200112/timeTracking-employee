@@ -81,18 +81,35 @@ export function SignIn() {
     }
   };
 
-  // Handle OTP paste
-  const handleOtpPaste = (e) => {
+  // Handle OTP paste and auto-verify
+  const handleOtpPaste = async (e) => {
     e.preventDefault();
     const pasteData = e.clipboardData.getData("text/plain").trim();
     if (/^\d+$/.test(pasteData) && pasteData.length === otp.length) {
       const newOtp = pasteData.split("");
       setOtp(newOtp);
-      document.getElementById(`otp-input-${otp.length - 1}`).focus();
+
+      // Auto-verify the OTP
+      try {
+        const verificationCode = newOtp.join("");
+        const response = await axios.post("/api/verify-code", {
+          code: verificationCode,
+          email,
+        });
+
+        if (response.status === 200) {
+          navigate("/dashboard/home");
+        } else {
+          setError(response.data.message || "Verification failed.");
+        }
+      } catch (error) {
+        console.error("Verification failed:", error);
+        setError("Invalid verification code.");
+      }
     }
   };
 
-  // Verify OTP
+  // Verify OTP manually
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     if (timer === 0) {
@@ -196,9 +213,7 @@ export function SignIn() {
                   </button>
                 </div>
                 {error && (
-                  <Typography
-                    className="text-red-500 text-sm text-center"
-                  >
+                  <Typography className="text-red-500 text-sm text-center">
                     {error}
                   </Typography>
                 )}
@@ -239,11 +254,11 @@ export function SignIn() {
                 ))}
               </div>
             )}
-            {isCodeSent && (
+            {/* {isCodeSent && (
               <div className="text-center text-sm mt-3">
-                {/* <span>Resend code in: {formatTime()}</span> */}
+                <span>Resend code in: {formatTime()}</span>
               </div>
-            )}
+            )} */}
             {!isCodeSent ? (
               <Button
                 onClick={handleLogin}
